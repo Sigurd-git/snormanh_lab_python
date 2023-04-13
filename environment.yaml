@@ -1,0 +1,29 @@
+name: py310
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - scikit-learn
+  - tqdm
+  - numpy
+  - pillow
+  - opencv
+  - pandas
+  - psutil
+  - pysoundfile
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - dill
+  - cox
+  - einops
+  - h5py
+  - pip
+  - montreal-forced-aligner
+
+  - pip:
+    - textgrid
+    - mat73
+    - git+https://github.com/jenellefeather/chcochleagram.git
+
