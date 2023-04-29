@@ -32,18 +32,16 @@ def concatenate_time_by_variables(df,variables):
     #make sure observations can be identified by column_names
     obs = tmp_df.groupby(column_names).apply(lambda x: len(x[time_variable])).reset_index()
     assert  (obs[0].values == 1).all(), 'observations can not be identified by rest of the columns'
-    tmp_variables = variables.copy()
+
+    id_vars = column_names.copy()
     for variable in variables:
         
         assert variable in column_names, f'{variable} must be in the columns'
-        id_vars = [x for x in column_names if x not in tmp_variables]
-
+        id_vars = [x for x in id_vars if x != variable]
         #sort by variable
         tmp_df = tmp_df.sort_values(by=variable)
-
         tmp_df = tmp_df.groupby(id_vars).apply(lambda x: np.concatenate(x[time_variable].values,axis=0)).reset_index()
         tmp_df.rename(columns={0:time_variable},inplace=True)
-        tmp_variables = [x for x in variables if x != variable]
         column_names = [x for x in column_names if x != variable]
     return tmp_df
 

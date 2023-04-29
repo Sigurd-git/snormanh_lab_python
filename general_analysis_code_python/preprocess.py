@@ -330,7 +330,14 @@ class rearrange_and_reverse:
 
 
 
-def generate_phoneme_features(all_labels, phoneme_label, phoneme_onset, phoneme_offset, time_length,onset_feature='False'):
+def generate_phoneme_features(all_labels, phoneme_label, phoneme_onset, phoneme_offset, time_length,onset_feature=False):
+
+    #make sure all_labels, phoneme_label, phoneme_onset, phoneme_offset are all numpy arrays
+    all_labels = np.array(all_labels)
+    phoneme_label = np.array(phoneme_label)
+    phoneme_onset = np.array(phoneme_onset)
+    phoneme_offset = np.array(phoneme_offset)
+    
     feature_tensor = np.zeros((time_length,len(all_labels)))
 
     for phoneme_index in range(len(phoneme_label)):
