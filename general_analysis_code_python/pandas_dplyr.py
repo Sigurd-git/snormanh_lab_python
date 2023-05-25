@@ -12,7 +12,7 @@ def filter_at(result_df,at):
     result_df = pd.concat(result_dfs)
     return result_df
 
-def concatenate_time_by_variables(df,variables):
+def concatenate_time_by_variables(df,variables,return_foldmask=False):
 ### Sometimes we want to concatenate time series by variables,
 ### for example, we have a dataframe with columns: section, rate, rep, data
 ### we want to concatenate data by rate, so that the 2 regression share the same weights.
@@ -34,15 +34,37 @@ def concatenate_time_by_variables(df,variables):
     assert  (obs[0].values == 1).all(), 'observations can not be identified by rest of the columns'
 
     id_vars = column_names.copy()
+
+    def concatenate_time(x,id_vars,variable):
+        
+        #foldmask
+        #generate foldmasks
+        fold_mask_list = []
+        for index,maskvalue in enumerate(x[variable].values):
+            fold_mask_list+= x.iloc[index][time_variable].shape[0]*[maskvalue]
+        fold_mask_list = np.array(fold_mask_list)
+
+        new_df = pd.DataFrame({'fold_mask':[fold_mask_list],time_variable:[np.concatenate(x[time_variable].values,axis=0)]},index=[0])
+
+
+        return new_df
+    fold_mask_dicts = []
     for variable in variables:
         
         assert variable in column_names, f'{variable} must be in the columns'
         id_vars = [x for x in id_vars if x != variable]
         #sort by variable
         tmp_df = tmp_df.sort_values(by=variable)
-        tmp_df = tmp_df.groupby(id_vars).apply(lambda x: np.concatenate(x[time_variable].values,axis=0)).reset_index()
-        tmp_df.rename(columns={0:time_variable},inplace=True)
+        tmp_df = tmp_df.groupby(id_vars).apply(lambda x: concatenate_time(x,id_vars,variable)).reset_index()
+        fold_masks = tmp_df['fold_mask'].values
         column_names = [x for x in column_names if x != variable]
+
+    #remove column level_*
+    df_columns = tmp_df.columns
+    df_columns = [x for x in df_columns if not x.startswith('level_')]
+    #remove column fold_mask
+    df_columns = [x for x in df_columns if x != 'fold_mask']
+    tmp_df = tmp_df[df_columns]
     return tmp_df
 
 def replicate_data_feature(feature_df,data_df):
@@ -70,6 +92,10 @@ def replicate_data_feature(feature_df,data_df):
 
     same_group_variables = [x for x in column_names_data if x in column_names_feature]
 
+    #make sure the set of group variables of data and feature are the same
+    for group_variable in same_group_variables:
+        assert set(data_df[group_variable])== set(feature_df[group_variable]), f'{group_variable} of data and feature have different levels'
+    
     #join data_df and feature_df
     data_feature_df = data_df.merge(feature_df,how='outer',on=same_group_variables)
 
@@ -80,4 +106,14 @@ def replicate_data_feature(feature_df,data_df):
     data_df = data_feature_df.drop(columns=['feature'])
     
     return feature_df,data_df
+
+if __name__=='__main__':
+    # create example data
+    df = pd.DataFrame({'section': ['A', 'A', 'A', 'A', 'A', 'A', 'B', 'B', 'B', 'B','B', 'B'],
+                    'rate': ['1', '1', '1', '2', '2', '2', '1', '1', '1', '2','2', '2'],
+                    'rep': ['1', '2', '3', '1', '2', '3', '1', '2', '3', '1','2', '3'],
+                    #range from 10*i to 10*i+10
+                    'data': [np.arange(10*i,10*i+10) for i in range(12)]})
+    print(concatenate_time_by_variables(df,['rate']))
+    pass
 

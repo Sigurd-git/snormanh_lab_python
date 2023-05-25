@@ -406,7 +406,7 @@ def plot_average_envelop_and_origin(wav_path,feature_df):
 
 
 
-def get_cochleagram(wav_path,output_sr=100,nonlinearity='power'):
+def get_cochleagram(wav_path,output_sr=100,nonlinearity='power',n=None):
     '''
     This is a wrap of function human_cochleagram from package pycochleagram.
     wav_path: path to the wav file
@@ -417,7 +417,7 @@ def get_cochleagram(wav_path,output_sr=100,nonlinearity='power'):
     
     y, sr = sf.read(wav_path)
     #get the cochleagram
-    coch = human_cochleagram(y, sr, strict=False,nonlinearity=nonlinearity)
+    coch = human_cochleagram(y, sr, strict=False,nonlinearity=nonlinearity,n=n)
     coch = np.flipud(coch)
     #resample to 100Hz
     coch = scipy.signal.resample(coch, np.int32(np.round(output_sr/sr*coch.shape[1])), axis=1)

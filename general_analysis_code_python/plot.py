@@ -2,7 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-def line_plot(result_df,x,y,xlim=(-1,1),ylim=(-1,1),height=10,aspect=1,facet_col=None,facet_row=None,color_variable=None,style_variable=None,repeat_variable=None):
+
+
+def line_plot(result_df,x,y,xlim=None,ylim=None,height=10,aspect=1,facet_col=None,facet_row=None,color_variable=None,style_variable=None,repeat_variable=None):
     '''
     result_df: dataframe with columns x,y,color_variable,style_variable,repeat_variable,facet_col,facet_row,where x,y is necessary and others are optional.
     x: the name of the column in result_df that will be used as x
@@ -31,8 +33,10 @@ def line_plot(result_df,x,y,xlim=(-1,1),ylim=(-1,1),height=10,aspect=1,facet_col
             sns.lineplot(data=result_df,x=x,y=y,hue=color_variable,style=style_variable,ax=ax)
             ax.set_xlabel(f'{x}')
             ax.set_ylabel(f'{y}')
-            ax.set_xlim(xlim)
-            ax.set_ylim(ylim)
+            if xlim is not None:
+                ax.set_xlim(xlim)
+            if ylim is not None:
+                ax.set_ylim(ylim)
 
             return ax
         case (None,_):
@@ -43,8 +47,10 @@ def line_plot(result_df,x,y,xlim=(-1,1),ylim=(-1,1),height=10,aspect=1,facet_col
                 sns.lineplot(data=tmp,x=x,y=y,hue=color_variable,style=style_variable,ax=ax)
                 ax.set_xlabel(f'{x}')
                 ax.set_ylabel(f'{y}')
-                ax.set_xlim(xlim)
-                ax.set_ylim(ylim)
+                if xlim is not None:
+                    ax.set_xlim(xlim)
+                if ylim is not None:
+                    ax.set_ylim(ylim)
             return g
         case (_,None):
             g = sns.FacetGrid(result_df,col=facet_col,row=facet_row,height=10,aspect=aspect)
@@ -53,8 +59,10 @@ def line_plot(result_df,x,y,xlim=(-1,1),ylim=(-1,1),height=10,aspect=1,facet_col
                 sns.lineplot(data=tmp,x=x,y=y,hue=color_variable,style=style_variable,ax=ax)
                 ax.set_xlabel(f'{x}')
                 ax.set_ylabel(f'{y}')
-                ax.set_xlim(xlim)
-                ax.set_ylim(ylim)
+                if xlim is not None:
+                    ax.set_xlim(xlim)
+                if ylim is not None:
+                    ax.set_ylim(ylim)
             return g
         case (_,_):
             g = sns.FacetGrid(result_df,col=facet_col,row=facet_row,height=10,aspect=aspect)
@@ -63,9 +71,56 @@ def line_plot(result_df,x,y,xlim=(-1,1),ylim=(-1,1),height=10,aspect=1,facet_col
                 sns.lineplot(data=tmp,x=x,y=y,hue=color_variable,style=style_variable,ax=ax)
                 ax.set_xlabel(f'{x}')
                 ax.set_ylabel(f'{y}')
-                ax.set_xlim(xlim)
-                ax.set_ylim(ylim)
+                if xlim is not None:
+                    ax.set_xlim(xlim)
+                if ylim is not None:
+                    ax.set_ylim(ylim)
             return g
+
+
+def STRF_plot(result_df,STRF,height=10,aspect=1,facet_col=None,facet_row=None,vmin=None,vmax=None):
+    '''
+    result_df: dataframe with columns x,y,color_variable,style_variable,repeat_variable,facet_col,facet_row,where x,y is necessary and others are optional.
+    STRF: the name of the column in result_df that will be used as STRF
+
+    height: the height of the figure
+    aspect: the aspect ratio of the figure
+
+    facet_col: the name of the column in result_df that will be used to devide plot into several columns.
+    facet_row: the name of the column in result_df that will be used to devide plot into several rows.
+
+
+    '''
+
+    #facet
+    match facet_row,facet_col:
+        case (None,None):
+            fig,ax = plt.subplots(1,1,figsize=(height * aspect,height))
+            STRF_matrix = result_df[STRF].values[0]
+            sns.heatmap(STRF_matrix,ax=ax,cmap='RdBu_r',cbar=False,vmin=vmin,vmax=vmax)
+
+            return ax
+        case (None,_):
+            g = sns.FacetGrid(result_df,col=facet_col,row=facet_row,height=10,aspect=aspect)
+            for (col_val), ax in g.axes_dict.items():
+                STRF_matrix = result_df[(result_df[facet_col]==col_val)][STRF].values[0]
+                sns.heatmap(STRF_matrix,ax=ax,cmap='RdBu_r',cbar=False,vmin=vmin,vmax=vmax)
+
+            return g
+        case (_,None):
+            g = sns.FacetGrid(result_df,col=facet_col,row=facet_row,height=10,aspect=aspect)
+            for (row_val), ax in g.axes_dict.items():
+                STRF_matrix = result_df[(result_df[facet_row]==row_val)][STRF].values[0]
+                sns.heatmap(STRF_matrix,ax=ax,cmap='RdBu_r',cbar=False,vmin=vmin,vmax=vmax)
+            return g
+        case (_,_):
+            g = sns.FacetGrid(result_df,col=facet_col,row=facet_row,height=10,aspect=aspect)
+            for (row_val, col_val), ax in g.axes_dict.items():
+                STRF_matrix = result_df[(result_df[facet_row]==row_val) & (result_df[facet_col]==col_val)][STRF].values[0]
+                sns.heatmap(STRF_matrix,ax=ax,cmap='RdBu_r',cbar=False,vmin=vmin,vmax=vmax)
+            return g
+
+
 
 def trf_plot(result_df,facet_col=None,facet_row=None,color_variable=None,style_variable=None,repeat_variable=None):
 
