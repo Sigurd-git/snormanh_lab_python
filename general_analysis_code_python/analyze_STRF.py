@@ -1,5 +1,20 @@
 import numpy as np
-def reshape2STRF(result_df,lag_num):
+import pandas as pd
+def pivot_cell(df,matrix_column,time_stamp=None):
+    '''
+    There is a time by feature matrix in each cell of matrix_column of df
+    '''
+    matrix = df[matrix_column].values
+
+    #group the df rowwise
+    df['row'] = np.arange(len(df))
+    df = df.groupby('row')
+
+    new_df = pd.DataFrame(matrix,columns=time_stamp)
+    #melt the xs
+    new_df = new_df.melt(var_name='time_stamp',value_name='diff')
+    return new_df
+def reshape2STRF(result_df,lag_num,):
     #result_df have column coefficients
     # will add column STRF whose shape is (feature by lag)
     coefficients = result_df['coefficients'].values
