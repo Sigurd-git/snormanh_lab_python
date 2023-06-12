@@ -137,4 +137,4 @@ if __name__ == '__main__':
     I, C,_,_,_ = parse_optInputs_keyvalue(['key1', []], I, 'empty_means_unspecified', True)
 
     # use defaults to catch a spelling mistake
-    I,_,_,_,_ = parse_optInputs_keyvalue(['key1', [4, 5, 6]], I)
+    I,_,_,_,_ = parse_optInputs_keyvalue(['keys1', [4, 5, 6]], I)
