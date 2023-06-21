@@ -15,20 +15,23 @@ def ridge_via_svd(y, U, s, V, k):
     b = np.empty((D, nK))
     for i in range(nK):
         r = s / (s**2 + k[i])
-        b[:, i] = V @ (r * Uty)  # weight principal components and transform back
+        b[:, i] = V @ (np.diag(r) @ Uty)  # weight principal components and transform back
     
     return b
 
 if __name__ == '__main__':
     # Define y, U, s, V and k
-    y = np.array([1, 2, 3])
-    U = np.array([[0.14, 0.59, 0.80], [0.41, 0.57, -0.71], [0.89, -0.56, 0.0]])
-    s = np.array([3.34, 0.51, 0.0])
-    V = np.array([[0.14, 0.59, 0.80], [0.41, 0.57, -0.71], [0.89, -0.56, 0.0]])
-    k = np.array([0.1, 0.5, 1.0])
+    X = np.random.rand(10000, 3)
+    U, s, Vt = np.linalg.svd(X, full_matrices=False)
+    b = np.array([1, 0.5, 1.0])
+    y = X @ b+ np.random.randn(10000)/10
+    k = np.array([0,0.1, 0.5, 1.0])
+
 
     # Compute ridge regression weights
-    b = ridge_via_svd(y, U, s, V, k)
+    bh = ridge_via_svd(y, U, s, Vt.T, k)
 
     print("Ridge regression weights:")
-    print(b)
+    print(bh)
+    for j in range(bh.shape[1]):
+        print("k = %g, bh = %s,b=%s" % (k[j], bh[:, j],b))

@@ -18,7 +18,7 @@ def subdivide(N, n_divisions):
     assert sum(fold_sizes) == N
 
     # indices for each fold
-    inds = np.empty(N)
+    inds = np.empty(N,dtype=int)
     for i in range(n_divisions):
         xi = np.arange(fold_sizes[i]) + sum(fold_sizes[:i])
         inds[xi] = i + 1  # note: "+1" is added because Python indices start at 0, but MATLAB indices start at 1
