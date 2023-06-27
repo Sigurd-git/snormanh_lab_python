@@ -50,7 +50,7 @@ def parse_optInputs_keyvalue(optargs, I=None, *varargin):
             P,_,_,_,_ = parse_optInputs_keyvalue(varargin, P, 'noloop')
             if P['empty_means_unspecified'] is None:
                 P['empty_means_unspecified'] = False
-    print(len(optargs))
+
     n_optargs = len(optargs)
     if n_optargs % 2 != 0:
         raise ValueError('There are not an even number of optional inputs')
