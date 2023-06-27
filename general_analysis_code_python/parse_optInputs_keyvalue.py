@@ -1,3 +1,5 @@
+import optInputs_to_string
+
 def parse_optInputs_keyvalue(optargs, I=None, *varargin):
     """
     Parse optional inputs specified as a key-value pair. Key must be a string.
@@ -48,7 +50,7 @@ def parse_optInputs_keyvalue(optargs, I=None, *varargin):
             P,_,_,_,_ = parse_optInputs_keyvalue(varargin, P, 'noloop')
             if P['empty_means_unspecified'] is None:
                 P['empty_means_unspecified'] = False
-
+    print(len(optargs))
     n_optargs = len(optargs)
     if n_optargs % 2 != 0:
         raise ValueError('There are not an even number of optional inputs')
@@ -58,7 +60,8 @@ def parse_optInputs_keyvalue(optargs, I=None, *varargin):
     else:
         possible_keys = list(I.keys())
 
-    if len(set(optargs[0:n_optargs:2])) != len(optargs[0:n_optargs:2]):
+    optargs_list = list(optargs)
+    if len(set(optargs_list[::2])) != len(optargs_list[::2]):
         raise ValueError('Duplicate keys')
 
     if 'possible_keys' in locals():
@@ -115,7 +118,7 @@ def parse_optInputs_keyvalue(optargs, I=None, *varargin):
     C_value = dict(sorted(C_value.items(), key=lambda x: list(I.keys()).index(x[0])))
 
     if P['paramstring'] and not P['noloop']:
-        paramstring = optInputs_to_string(I, C_value, P['always_include'], P['always_exclude'], maxlen=P['maxlen'], delimiter=P['delimiter'])
+        paramstring = optInputs_to_string.optInputs_to_string(I, C_value, P['always_include'], P['always_exclude'], maxlen=P['maxlen'], delimiter=P['delimiter'])
     else:
         paramstring = ''
 
@@ -128,13 +131,27 @@ if __name__ == '__main__':
     optargs = ['key1', [1, 2, 3], 'key2', list(range(1, 4)), 'key3', 'abc']
     I, C,_,_,_ = parse_optInputs_keyvalue(optargs)
 
+    print(I, C)
+
     # specifying default values
     I = {'key1': [1, 2, 3], 'key2': list(range(1, 4)), 'key3': 'abc'}
     I, C,_,_,_ = parse_optInputs_keyvalue(['key1', [4, 5, 6]], I)
+
+    print(I, C)
 
     # empty lists mean unspecified
     I = {'key1': [1, 2, 3], 'key2': list(range(1, 4)), 'key3': 'abc'}
     I, C,_,_,_ = parse_optInputs_keyvalue(['key1', []], I, 'empty_means_unspecified', True)
 
+    print(I, C)
+
     # use defaults to catch a spelling mistake
     I,_,_,_,_ = parse_optInputs_keyvalue(['key1', [4, 5, 6]], I)
+
+    print(I)
+
+    # test paramstring
+    I = {'key1': [1, 2, 3], 'key2': list(range(1, 4)), 'key3': 'abc'}
+    _,_,_,_,paramstring = parse_optInputs_keyvalue(['key1', [4, 5, 6]], I, 'paramstring', True)
+
+    print(paramstring)
