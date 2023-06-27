@@ -19,7 +19,7 @@ def struct2string(S, maxlen=100, delimiter='', omit_field=[], include_fields=Non
     
     P = dict(maxlen=maxlen, delimiter=delimiter, omit_field=omit_field, include_fields=include_fields)
     
-    P, _ = parse_optInputs_keyvalue(varargin, P, noloop=True)
+    # P, _ = parse_optInputs_keyvalue(varargin, P, noloop=True)
 
     idstring = ['']
 
@@ -32,7 +32,7 @@ def struct2string(S, maxlen=100, delimiter='', omit_field=[], include_fields=Non
         omit = len(P['omit_field']) > 0 and f[i] in P['omit_field']
         
         if not omit:
-            str_to_add = f'{f[i]}-{mytostring(S[f[i]], hashlen=P["maxlen"]-len(f[i])-1)}'
+            str_to_add = f'{f[i]}-{mytostring.mytostring(S[f[i]], hashlen=P["maxlen"]-len(f[i])-1)}'
             
             if len(idstring[-1]) == 0:
                 idstring[-1] = str_to_add

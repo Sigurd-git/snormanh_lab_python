@@ -1,7 +1,7 @@
 import parse_optInputs_keyvalue
 import struct2string
 
-def optInputs_to_string(I, C_value, always_include, always_exclude, *varargin):
+def optInputs_to_string(I, C_value, always_include, always_exclude, **varargin):
     """
     Takes two of the outputs of parse_optInputs_keyvalue and turns them into a string used to save the results of an analysis.
     
@@ -21,10 +21,12 @@ def optInputs_to_string(I, C_value, always_include, always_exclude, *varargin):
     str = optInputs_to_string(I, C_value, always_include, always_exclude)
     
     """
-    
+    # print(varargin)
+    # print(type(varargin))
+    # exit()
     # Initialize default parameters
     P = {'maxlen': 100, 'delimiter': '/'}
-    P = parse_optInputs_keyvalue(list(varargin), P, 'noloop')
+    # P = parse_optInputs_keyvalue.parse_optInputs_keyvalue(varargin, P, 'noloop')
 
     # Check there is no overlap between fields to include and exclude
     overlapping_fields = set(always_include).intersection(always_exclude)
@@ -53,17 +55,20 @@ def optInputs_to_string(I, C_value, always_include, always_exclude, *varargin):
         if field not in always_include:
             Z[field] = C_value[field]
 
+
     # Convert to string
-    str = struct2string(Z, maxlen=P['maxlen'], delimiter=P['delimiter'])
+    result = struct2string.struct2string(Z, maxlen=P['maxlen'], delimiter=P['delimiter'])
+
     
-    return str
+    return result
 
-
+# Test code
 if __name__ == '__main__':
     I = {'a': 'TCI', 'b': [1,2,3], 'c': ['hello','world']}
     varargin = ['a', 'quilting', 'c', ['goodbye','world']]
-    I, C_value = parse_optInputs_keyvalue.parse_optInputs_keyvalue(varargin, I)
+    # 
+    I,_,C_value,_,_ = parse_optInputs_keyvalue.parse_optInputs_keyvalue(varargin, I)
     always_include = ['b']
     always_exclude = ['a']
-    str = optInputs_to_string(I, C_value, always_include, always_exclude)
-    print(str)
+    result = optInputs_to_string(I, C_value, always_include, always_exclude)
+    print(result)

@@ -24,8 +24,11 @@ def mytostring(x, delimiter='-', hashlen=np.nan):
         else:
             # Scalar
             s = str(x)
+        # if not np.isnan(hashlen) and len(s) > hashlen:
+        #   s = DataHash(x)
         if not np.isnan(hashlen) and len(s) > hashlen:
-            s = DataHash(x)
+            s = DataHash(x)[:int(hashlen)]
+    
     elif isinstance(x, list):
         # Handle cell array
         s = delimiter.join(mytostring(i, delimiter=delimiter, hashlen=hashlen) for i in x)
