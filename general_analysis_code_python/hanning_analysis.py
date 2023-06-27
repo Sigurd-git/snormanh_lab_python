@@ -14,6 +14,7 @@ def hanning_basis(t, n_win, hanning_width, scale):
     H = np.zeros((n_t, n_win))
     for i in range(n_win):
         H[:, i] = myhann(t, hanning_width, (i-1)*0.5*hanning_width, scale)
+    
     return H
 
 def myhann(t, T, shift, scale):
@@ -29,43 +30,40 @@ def myhann(t, T, shift, scale):
     y[xi] = 0.5*(1 - np.cos(2*np.pi*t[xi]/T))
     return y
 
-def hanning_feature(feature,scale_factor,sr,hanning_width=None,dur=None,n_win=None):
+def hanning_feature(feature,scale_factor,sr,hanning_width=0.2,dur_normal=1,scale_max=2):
     '''
     feature: feature matrix the shape should be time by feature
     scale_factor: scale factor of the hanning window basis functions
 
-    You can input 2 of the 3 parameters(hanning_width,dur,n_win), and the third will be calculated.
-    I recommend to input hanning_width and dur.
+    You can input 2 of the 3 parameters(hanning_width,dur_normal,n_win), and the third will be calculated.
+    I recommend to input hanning_width and dur_normal.
 
-    dur: duration in seconds of longer TRF
+    dur_normal: duration in seconds of longer TRF
     hanning_width: width of the hanning window basis functions
     n_win: number of hanning window
 
     return: F: feature matrix which is convolved with hanning basis. shape should be (n_t, n_win*n_f)
     '''
 
-    ## given 2 of the 3 parameters(hanning_width,dur,n_win), calculate the third
-    if hanning_width is None:
-        hanning_width = 2*dur/n_win
-    elif dur is None:
-        dur = hanning_width*n_win/2
-    elif n_win is None:
-        n_win = int(dur/(hanning_width/2)-1)
-    else:
-        assert False,'Please input 2 of the 3 parameters(hanning_width,dur,n_win)'
+    ## given 2 of the 3 parameters(hanning_width,dur_normal,n_win), calculate the third
+
+    n_win = int(dur_normal/(hanning_width/2)-1)
 
     n_t,n_f = feature.shape
     # time, lag, feature
     F = np.full((n_t,n_win,n_f), np.nan)
 
+    time_upper_bound = scale_max*dur_normal
     # time stamp vector of TRF
-    t = np.arange(0, dur*sr)/sr
+    t = np.arange(time_upper_bound*sr-1)/sr
 
     # convolve feature with hanning basis
     H = hanning_basis(t, n_win, hanning_width, scale_factor)
+    H = H/np.sum(H)
+    
     for k in range(n_win):
         for feature_index in range(n_f):
-            F[:,k, feature_index] = np.convolve(feature[:, feature_index], H[:, k], mode='same')
+            F[:,k, feature_index] = np.convolve(feature[:, feature_index], H[:, k])[:n_t]
 
     F = F.reshape(F.shape[0],-1) #reshape to time by (n_win*n_f)
     return F

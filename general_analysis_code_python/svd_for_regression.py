@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.linalg import svd
 import sys
-from print_error_message import print_error_message
+from general_analysis_code_python.print_error_message import print_error_message
 def svd_for_regression(F, std_feats, demean_feats, groups=None):
     """
     Helper function for other regression scripts. Demeans and optionally z-scores the
