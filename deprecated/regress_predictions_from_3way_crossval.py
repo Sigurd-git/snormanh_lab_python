@@ -31,22 +31,30 @@ def regress_predictions_from_3way_crossval(F, Y, **kwargs):
     
     # folds
     if np.isscalar(I["test_folds"]):
-        n_folds = I["test_folds"]
         fold_indices = subdivide(n_samples, I["test_folds"])
     else:
         assert np.ndim(I["test_folds"]) == 1
         fold_indices = I["test_folds"]
-        n_folds = np.max(fold_indices)
+    all_folds = np.unique(fold_indices)
+    n_folds = len(all_folds)
     r = np.zeros((n_folds, n_data_vecs))
     mse = np.zeros((n_folds, n_data_vecs))
     B = np.zeros((n_features + 1, n_data_vecs, n_folds))
     # iterate through each fold
-    for test_fold in range(1,n_folds+1):
+    for index,test_fold in enumerate(all_folds):
         # train and testing folds
         test_indices = fold_indices == test_fold
         train_indices = np.logical_not(test_indices)
         F_train = F[train_indices]
         Y_train = Y[train_indices]
+        if np.isscalar(I["train_folds"]):
+            train_fold_indices = I["train_folds"]
+        elif np.ndim(I["train_folds"]) == 1:
+            train_fold_indices = I["train_folds"][train_indices]
+            assert len(train_fold_indices) == len(F_train)
+            
+        else:
+            raise ValueError("train_folds must be a scalar or a 1D array")
         
         if I['method']=='least-squares':
         #since we are not doing cross-validation, we can just use the least-squares solution.
@@ -60,10 +68,10 @@ def regress_predictions_from_3way_crossval(F, Y, **kwargs):
                 B_train[:, i] = regression_weights(y_train_i[xi], U, s, V, mF, normF, I["method"], I["K"], I['demean_feats']).squeeze()
         else:
             # Call the function regress_weights_from_2way_crossval for the training set
-            B_train, best_K, mse, r, _, _ = regress_weights_from_2way_crossval(
+            B_train, best_K, _, _, _, _ = regress_weights_from_2way_crossval(
                 F_train, 
                 Y_train, 
-                folds=I['train_folds'], 
+                folds=train_fold_indices, 
                 method=I['method'],
                 K=I['K'],
                 std_feats=I['std_feats'],
@@ -85,11 +93,12 @@ def regress_predictions_from_3way_crossval(F, Y, **kwargs):
 
         # calculate the accuracy metrics
         for i in range(n_data_vecs):
-            r[test_fold-1, i] = np.corrcoef((Yh[test_indices, i], Y[test_indices, i]))[0, 1]
-            mse[test_fold-1, i] = np.nanmean((Yh[test_indices, i]- Y[test_indices, i])**2)
+
+            r[index, i] = np.corrcoef((Yh[test_indices, i], Y[test_indices, i]))[0, 1]
+            mse[index, i] = np.nanmean((Yh[test_indices, i]- Y[test_indices, i])**2)
         
         # save weights
-        B[:, :, test_fold-1] = B_train
+        B[:, :, index] = B_train
 
     # calculate the mean squared error
     overall_mse = np.mean((Yh - Y)**2, axis=0)
@@ -97,17 +106,22 @@ def regress_predictions_from_3way_crossval(F, Y, **kwargs):
     return Yh, overall_mse, r, np.arange(n_folds)+1, mse, B
 
 if __name__ == "__main__":
-    N = 10000
-    P = 100
-    sig = 3
-    F = np.random.randn(N, P)
-    w = np.random.randn(P, 2)
-    y = np.dot(F, w) 
+    from sklearn.datasets import make_regression
 
-    Yh, overall_mse, r, test_folds, mse, B = regress_predictions_from_3way_crossval(F, y, folds=4, method='ridge', std_feats=False, demean_feats=True)
+    # make some data using sklearn's make_regression function-- very handy!
+    X, y = make_regression(n_samples=1000,
+                        n_features=100, 
+                        noise=10,
+                        random_state=0,
+                        effective_rank=20,
+                        n_targets=2)
+
+    groups = np.array([1]*200+[2]*200+[3]*200+[4]*200+[5]*200)
+
+    Yh, overall_mse, r, test_folds, mse, B = regress_predictions_from_3way_crossval(X, y, train_folds=groups,test_folds=groups, method='ridge', std_feats=False, demean_feats=False)
     
-    print(overall_mse)
+    print(r.mean(axis=0))
 
-    Yh, overall_mse, r, test_folds, mse, B = regress_predictions_from_3way_crossval(F, y, folds=4, method='least-squares', std_feats=False, demean_feats=True)
-    print(overall_mse)
+    Yh, overall_mse, r, test_folds, mse, B = regress_predictions_from_3way_crossval(X, y, train_folds=groups,test_folds=groups, method='least-squares', std_feats=False, demean_feats=True)
+    print(r.mean(axis=0))
     pass

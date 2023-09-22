@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io
-from general_analysis_code_python.preprocess import generate_phoneme_features
+from general_analysis_code_python.preprocess import generate_onehot_features
 import pandas as pd
 def hanning_basis(t, n_win, hanning_width, scale):
     '''
@@ -13,7 +13,7 @@ def hanning_basis(t, n_win, hanning_width, scale):
     n_t = len(t)
     H = np.zeros((n_t, n_win))
     for i in range(n_win):
-        H[:, i] = myhann(t, hanning_width, (i-1)*0.5*hanning_width, scale)
+        H[:, i] = myhann(t, hanning_width, i*0.5*hanning_width, scale)
     
     return H
 
@@ -30,7 +30,7 @@ def myhann(t, T, shift, scale):
     y[xi] = 0.5*(1 - np.cos(2*np.pi*t[xi]/T))
     return y
 
-def hanning_feature(feature,scale_factor,sr,hanning_width=0.2,dur_normal=1,scale_max=2):
+def hanning_feature(feature,scale_factor,sr=100,hanning_width=0.2,dur_normal=1,scale_max=2):
     '''
     feature: feature matrix the shape should be time by feature
     scale_factor: scale factor of the hanning window basis functions
@@ -42,7 +42,7 @@ def hanning_feature(feature,scale_factor,sr,hanning_width=0.2,dur_normal=1,scale
     hanning_width: width of the hanning window basis functions
     n_win: number of hanning window
 
-    return: F: feature matrix which is convolved with hanning basis. shape should be (n_t, n_win*n_f)
+    return: F: feature matrix which is convolved with hanning basis. shape should be (n_t, n_win, n_f)
     '''
 
     ## given 2 of the 3 parameters(hanning_width,dur_normal,n_win), calculate the third
@@ -51,7 +51,7 @@ def hanning_feature(feature,scale_factor,sr,hanning_width=0.2,dur_normal=1,scale
 
     n_t,n_f = feature.shape
     # time, lag, feature
-    F = np.full((n_t,n_win,n_f), np.nan)
+    F = np.full((n_t,n_f,n_win), np.nan)
 
     time_upper_bound = scale_max*dur_normal
     # time stamp vector of TRF
@@ -63,9 +63,8 @@ def hanning_feature(feature,scale_factor,sr,hanning_width=0.2,dur_normal=1,scale
     
     for k in range(n_win):
         for feature_index in range(n_f):
-            F[:,k, feature_index] = np.convolve(feature[:, feature_index], H[:, k])[:n_t]
+            F[:, feature_index,k] = np.convolve(feature[:, feature_index], H[:, k])[:n_t]
 
-    F = F.reshape(F.shape[0],-1) #reshape to time by (n_win*n_f)
     return F
 
 def plot_feature_origin_and_constructed(feature,constructed_feature,weights,save_path):
@@ -87,24 +86,24 @@ def plot_feature_origin_and_constructed(feature,constructed_feature,weights,save
 
 if __name__ == '__main__':
 
-# #test
-#     # duration in seconds of longer TRF
-#     dur = 1 #500ms
+#test
+    # duration in seconds of longer TRF
+    dur = 1 #500ms
 
-#     # width of the hanning window basis functions
-#     # longer widths lead to smoother TRFs
-#     hanning_width = 0.2
-#     n_t=10000
-#     # sampling rate of t
-#     # making it high so you can see the smoothly varying underlying function
-#     sr = 1000
-#     n_win = int(dur/(hanning_width/2)-1)
-#     weights = np.random.randn(n_win)
-#     # vary this scale factor
-#     scale_factor = [0,0.25,0.5,0.75, 1]
+    # width of the hanning window basis functions
+    # longer widths lead to smoother TRFs
+    hanning_width = 0.2
+    n_t=10000
+    # sampling rate of t
+    # making it high so you can see the smoothly varying underlying function
+    sr = 1000
+    n_win = int(dur/(hanning_width/2)-1)
+    weights = np.random.randn(n_win)
+    # vary this scale factor
+    scale_factor = [0,0.25,0.5,0.75, 1]
 
 #     # time stamp vector of TRF
-#     t = np.arange(0, dur*sr)/sr
+    t = np.arange(0, dur*sr)/sr
 
 #     # normal density function
 #     f = np.exp(-(np.arange(n_t)-5000)**2/40000)
@@ -136,13 +135,13 @@ if __name__ == '__main__':
 
 #     ## Get hanning basis and plot
 
-#     scale = 1
-#     H = hanning_basis(t, n_win, hanning_width, scale)
-#     plt.figure()
-#     plt.plot(H)
-#     h = plt.plot(np.sum(H, axis=1), 'k-')
-#     plt.legend(h, ['Sum'])
-#     plt.savefig('/scratch/snormanh_lab/shared/Sigurd/hanning_basis1.pdf')
+    scale = 1
+    H = hanning_basis(t, n_win, hanning_width, scale)
+    plt.figure()
+    plt.plot(H)
+    h = plt.plot(np.sum(H, axis=1), 'k-')
+    plt.legend(h, ['Sum'])
+    plt.savefig('/scratch/snormanh_lab/shared/Sigurd/hanning_basis1.pdf')
 
 #     scale = 0.5
 #     H = hanning_basis(t, n_win, hanning_width, scale)

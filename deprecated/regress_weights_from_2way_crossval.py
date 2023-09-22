@@ -50,9 +50,9 @@ def regress_weights_from_2way_crossval(F, Y, **kwargs):
         fold_indices = subdivide(n_samples, I["folds"])
     else:
         assert np.ndim(I["folds"]) == 1
-        _, _, fold_indices = np.unique(I["folds"], return_inverse=True)
-        n_folds = np.max(fold_indices) + 1
-
+        fold_indices = I["folds"]
+    all_folds = np.unique(fold_indices)
+    n_folds = len(all_folds)
     # number of components to test
     n_K = len(I["K"])
 
@@ -62,7 +62,7 @@ def regress_weights_from_2way_crossval(F, Y, **kwargs):
     demeaned_mse = mse.copy()
     normalized_mse = mse.copy()
     
-    for test_fold in range(1,n_folds+1):
+    for index,test_fold in enumerate(all_folds):
         # train and testing folds
         test_fold_indices = fold_indices == test_fold
         train_fold_indices = np.logical_not(test_fold_indices)
@@ -85,9 +85,9 @@ def regress_weights_from_2way_crossval(F, Y, **kwargs):
             B = regression_weights(y_train_i, U, s, V, mF, normF, I["method"], I["K"], I['demean_feats'])
             yh = F_test @ B
             err = yh - Y[test_fold_indices, i: i+1]
-            mse[test_fold-1, :, i] = np.nanmean(err ** 2, axis=0)
+            mse[index, :, i] = np.nanmean(err ** 2, axis=0)
             for k in range(n_K):
-                r[test_fold-1, k, i] = np.corrcoef(yh[:,k], Y[test_fold_indices, i])[0, 1]
+                r[index, k, i] = np.corrcoef(yh[:,k], Y[test_fold_indices, i])[0, 1]
             # demeaned_mse[test_fold, :, i] = np.corrcoef_variance_sensitive_symmetric(yh, Y[test_fold_indices, i])
             # normalized_mse[test_fold, :, i] = np.corrcoef_normalized_squared_error(yh, Y[test_fold_indices, i])
 
@@ -130,19 +130,34 @@ def regress_weights_from_2way_crossval(F, Y, **kwargs):
 
 
 if __name__ == '__main__':
-    N = 10000
-    P = 100
-    sig = 3
-    F = np.random.randn(N, P)
-    w = np.random.randn(P, 2)
-    y = np.dot(F, w) + sig * np.random.randn(N, 2)/10
+    from sklearn.datasets import make_regression
+    X, y = make_regression(n_samples=10000,
+                        n_features=100, 
+                        noise=100,
+                        random_state=5,
+                        effective_rank=20,
+                        n_targets=1)
+    y = y.reshape(-1,1)
+    #demean and std y
+    mean_y, std_y = np.mean(y), np.std(y)
+    y = (y-mean_y)/std_y
+    groups = np.array([1]*200+[2]*200+[3]*200+[4]*200+[5]*200)
 
-    B, best_K, mse, r, _, _ = regress_weights_from_2way_crossval(F, y, method='least-squares', folds=5, demean_feats=True, std_feats=True)
+    B, best_K, mse, r, _, _ = regress_weights_from_2way_crossval(X, y, method='least-squares', folds=5, demean_feats=True, std_feats=True,regularization_metric='pearson')
     #all of these should be close to zero
-    print(F@B[1:]+B[0]-y)
+    # print(X@B[1:]+B[0]-y)
+    xxx = X@B[1:]
+    yyy = y
+    xxx = xxx.reshape(-1)
+    yyy = yyy.reshape(-1)
+    print(np.corrcoef(xxx,yyy))
 
-    B, best_K, mse, r, _, _ = regress_weights_from_2way_crossval(F, y, method='ridge', folds=5, demean_feats=True, std_feats=True)
+    B, best_K, mse, r, _, _ = regress_weights_from_2way_crossval(X, y, method='ridge', folds=5, demean_feats=True, std_feats=True,regularization_metric='pearson')
 
     #all of these should be close to zero
-    print(F@B[1:]+B[0]-y)
+    xxx = X@B[1:]
+    yyy = y
+    xxx = xxx.reshape(-1)
+    yyy = yyy.reshape(-1)
+    print(np.corrcoef(xxx,yyy))    # print(X@B[1:]+B[0]-y)
     pass
