@@ -4,7 +4,7 @@ import seaborn as sns
 import pandas as pd
 
 
-def line_plot(result_df,x,y,xlim=None,ylim=None,height=10,aspect=1,facet_col=None,facet_row=None,color_variable=None,style_variable=None,repeat_variable=None):
+def line_plot(result_df,x,y,xlim=None,ylim=None,height=10,aspect=1,facet_col=None,facet_row=None,color_variable=None,style_variable=None,repeat_variable=None,average=False,legend=True,axg=None):
     '''
     result_df: dataframe with columns x,y,color_variable,style_variable,repeat_variable,facet_col,facet_row,where x,y is necessary and others are optional.
     x: the name of the column in result_df that will be used as x
@@ -23,58 +23,93 @@ def line_plot(result_df,x,y,xlim=None,ylim=None,height=10,aspect=1,facet_col=Non
     style_variable: the name of the column in result_df that will be used to group data and give each group a seperate style.
     repeat_variable: the name of the column in result_df that will be used to group data and give each group a seperate line(With same color and style). This is not supported yet.
 
+    axg: the axes of the figure. If None, a new figure will be created.
     '''
     if repeat_variable is not None:
         assert False, 'repeat_variable is not supported yet'
     #facet
     match facet_row,facet_col:
         case (None,None):
-            fig,ax = plt.subplots(1,1,figsize=(height * aspect,height))
+            if axg is None:
+                _,ax = plt.subplots(1,1,figsize=(height * aspect,height))
+            else:
+                ax = axg
+            
             sns.lineplot(data=result_df,x=x,y=y,hue=color_variable,style=style_variable,ax=ax)
+            if average:
+                sns.lineplot(data=result_df,x=x,y=y,ax=ax,estimator=np.mean,color='green',linewidth=3)
             ax.set_xlabel(f'{x}')
             ax.set_ylabel(f'{y}')
+
             if xlim is not None:
                 ax.set_xlim(xlim)
             if ylim is not None:
                 ax.set_ylim(ylim)
-
+            if not legend:
+                ax.legend_.remove()
             return ax
         case (None,_):
-            g = sns.FacetGrid(result_df,col=facet_col,row=facet_row,height=10,aspect=aspect)
+            if axg is None:
+                g = sns.FacetGrid(result_df,col=facet_col,row=facet_row,height=10,aspect=aspect)
+            else:
+                assert len(g.axes_dict) == len(np.unique(result_df[facet_col])), 'axg should have same number of columns as unique values in facet_col'
+                g = axg
             for (col_val), ax in g.axes_dict.items():
                 tmp = result_df[(result_df[facet_col]==col_val)]
-
                 sns.lineplot(data=tmp,x=x,y=y,hue=color_variable,style=style_variable,ax=ax)
+                if average:
+                    sns.lineplot(data=tmp,x=x,y=y,ax=ax,estimator=np.mean,color='green',linewidth=3)
                 ax.set_xlabel(f'{x}')
                 ax.set_ylabel(f'{y}')
+
                 if xlim is not None:
                     ax.set_xlim(xlim)
                 if ylim is not None:
                     ax.set_ylim(ylim)
+                if not legend:
+                    ax.legend_.remove()
             return g
         case (_,None):
-            g = sns.FacetGrid(result_df,col=facet_col,row=facet_row,height=10,aspect=aspect)
+            if axg is None:
+                g = sns.FacetGrid(result_df,col=facet_col,row=facet_row,height=10,aspect=aspect)
+            else:
+                assert len(g.axes_dict) == len(np.unique(result_df[facet_row])), 'axg should have same number of rows as unique values in facet_row'
+                g = axg
             for (row_val), ax in g.axes_dict.items():
                 tmp = result_df[(result_df[facet_row]==row_val)]
                 sns.lineplot(data=tmp,x=x,y=y,hue=color_variable,style=style_variable,ax=ax)
+                if average:
+                    sns.lineplot(data=tmp,x=x,y=y,ax=ax,estimator=np.mean,color='green',linewidth=3)
                 ax.set_xlabel(f'{x}')
                 ax.set_ylabel(f'{y}')
+
                 if xlim is not None:
                     ax.set_xlim(xlim)
                 if ylim is not None:
                     ax.set_ylim(ylim)
+                if not legend:
+                    ax.legend_.remove()
             return g
         case (_,_):
-            g = sns.FacetGrid(result_df,col=facet_col,row=facet_row,height=10,aspect=aspect)
+            if axg is None:
+                g = sns.FacetGrid(result_df,col=facet_col,row=facet_row,height=10,aspect=aspect)
+            else:
+                assert len(g.axes_dict) == len(np.unique(result_df[facet_row])) * len(np.unique(result_df[facet_col])), 'axg should have same number of rows and columns as unique values in facet_row and facet_col'
+                g = axg
             for (row_val, col_val), ax in g.axes_dict.items():
                 tmp = result_df[(result_df[facet_row]==row_val) & (result_df[facet_col]==col_val)]
                 sns.lineplot(data=tmp,x=x,y=y,hue=color_variable,style=style_variable,ax=ax)
+                if average:
+                    sns.lineplot(data=tmp,x=x,y=y,ax=ax,estimator=np.mean,color='green',linewidth=3)
                 ax.set_xlabel(f'{x}')
                 ax.set_ylabel(f'{y}')
+
                 if xlim is not None:
                     ax.set_xlim(xlim)
                 if ylim is not None:
                     ax.set_ylim(ylim)
+                if not legend:
+                    ax.legend_.remove()
             return g
 
 
@@ -183,39 +218,7 @@ def trf_plot(result_df,facet_col=None,facet_row=None,color_variable=None,style_v
                 for i,max_lag in enumerate(max_lags):
                     ax.axvline(max_lag,color='black')
             return g
-    # if facet_col is not None or facet_row is not None:
-    #     g = sns.FacetGrid(TRF,col=facet_col,row=facet_row,height=10)
 
-    #     for (row_val, col_val), ax in g.axes_dict.items():
-    #         max_lags = result_df[(result_df[facet_row]==row_val) & (result_df[facet_col]==col_val)]['max_lag'].values
-    #         tmp = TRF[(TRF[facet_row]==row_val) & (TRF[facet_col]==col_val)]
-    #         sns.lineplot(data=tmp,x='lag',y='TRF',hue=color_variable,style=style_variable,ax=ax)
-    #         for i,max_lag in enumerate(max_lags):
-    #             ax.axvline(max_lag,color='black')
-    #     return g
-    # else:
-    #     fig,axes = plt.subplots(1,1)
-    #     max_lags = result_df['max_lag'].values
-    #     sns.lineplot(data=TRF,x='lag',y='TRF',style=style_variable,hue=color_variable,ax=axes)
-    #     for i,max_lag in enumerate(max_lags):
-    #         ax.axvline(max_lag,color='black')
-    #     return axes
-
-        
-        # for index,repeat in enumerate(TRF[repeat_variable].unique()):
-        #     tmp = TRF[TRF[repeat_variable]==repeat]
-        # #     sns.lineplot(data=tmp,x='lag',y='TRF',hue=color_variable,style=style_variable,legend=(False if index>0 else True))
-        
-        #     #facet
-        #     if facet_col is not None or facet_row is not None:
-        #         g = sns.FacetGrid(TRF,col=facet_col,row=facet_row)
-        #         g.map(sns.lineplot,data=tmp,x='lag',y='TRF',hue=color_variable,style=style_variable,legend=(False if index>0 else True))
-        #         return g
-
-
-    # colors=['b','orange','g','r']
-    # for i,max_lag in enumerate(result_df['max_lag']):
-    #     axes.axvline(max_lag,color=colors[i],linestyle='--')
 
 
 def plot_rasters_with_unified_scale(matrixs,plot_shape,save_path,ylabels=None,xlabels=None,titles=None):

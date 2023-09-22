@@ -330,42 +330,51 @@ class rearrange_and_reverse:
 
 
 
-def generate_phoneme_features(all_labels, phoneme_label, phoneme_onset, phoneme_offset, time_length,onset_feature=False):
+def generate_onehot_features(all_labels, onehot_label, onehot_onset, onehot_offset, time_length,onset_feature=False,sr=100):
+    """
+    This function generates one-hot encoded features for given labels, onsets, and offsets.
 
-    #make sure all_labels, phoneme_label, phoneme_onset, phoneme_offset are all numpy arrays
+    Parameters:
+    all_labels (numpy.array): Array of all possible labels.
+    onehot_label (numpy.array): Array of labels to be one-hot encoded.
+    onehot_onset (numpy.array): Array of onset times for each label in onehot_label.
+    onehot_offset (numpy.array): Array of offset times for each label in onehot_label.
+    time_length (int): The total time length for the feature tensor.
+    onset_feature (bool, optional): If True, only the first True index will be True. Defaults to False.
+    sr (int, optional): Sampling rate. Defaults to 100.
+
+    Returns:
+    feature_tensor (numpy.array): A 2D array with time_length rows and len(all_labels) columns, filled with one-hot encoded features.
+    """
+    #make sure all_labels, onehot_label, onehot_onset, onehot_offset are all numpy arrays
     all_labels = np.array(all_labels)
-    phoneme_label = np.array(phoneme_label)
-    phoneme_onset = np.array(phoneme_onset)
-    phoneme_offset = np.array(phoneme_offset)
+    onehot_label = np.array(onehot_label)
+    onehot_onset = np.array(onehot_onset)
+    onehot_offset = np.array(onehot_offset)
     
-    feature_tensor = np.zeros((time_length,len(all_labels)))
+    feature_tensor = np.full((time_length,len(all_labels)),np.nan,dtype=np.int8)
 
-    for phoneme_index in range(len(phoneme_label)):
-        phoneme = phoneme_label[phoneme_index]
-        onset = round(phoneme_onset[phoneme_index]*100)
-        offset = round(phoneme_offset[phoneme_index]*100)
-        if onset<0:
-            onset=0
-        if offset>time_length-1:
-            offset=time_length-1
-        if not onset_feature:
-            feature_tensor[onset:offset,all_labels==phoneme] = 1
-        else:
-            feature_tensor[onset,all_labels==phoneme] = 1
+    for onehot_index in range(len(onehot_label)):
+        onehot = onehot_label[onehot_index]
+        onset = onehot_onset[onehot_index]
+        offset = onehot_offset[onehot_index]
+
+        t_stim = np.arange(time_length)/sr
+        indexs = (onset<=t_stim)&(t_stim<=offset)
+
+        if onset_feature:
+            #only leave the first True index to be True
+            indexs = np.where(indexs)[0]
+        feature_tensor[indexs,all_labels==onehot] = 1
     return feature_tensor
 
-def generate_gonset_features(phoneme_onsets,time_length):
+def generate_gonset_features(onehot_onsets,time_length,sr=100):
     feature_tensor = np.zeros((time_length,1))
 
-    for phoneme_onset in phoneme_onsets:
-        onset = round(phoneme_onset*100)
-        if onset<0:
-            onset=0
-
-        # if onset>time_length-1:
-        #     onset=time_length-1
-
-        feature_tensor[onset,0] = 1
+    for onehot_onset in onehot_onsets:
+        t_stim = np.arange(time_length)/sr
+        indexs = (onehot_onset<=t_stim)&(t_stim<=onehot_onset+1/sr)
+        feature_tensor[indexs,0] = 1
     return feature_tensor
 
 if __name__ == '__main__':

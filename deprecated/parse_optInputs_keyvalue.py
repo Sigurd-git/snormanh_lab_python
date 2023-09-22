@@ -1,3 +1,5 @@
+import optInputs_to_string
+
 def parse_optInputs_keyvalue(optargs, I=None, *varargin):
     """
     Parse optional inputs specified as a key-value pair. Key must be a string.
@@ -115,7 +117,7 @@ def parse_optInputs_keyvalue(optargs, I=None, *varargin):
     C_value = dict(sorted(C_value.items(), key=lambda x: list(I.keys()).index(x[0])))
 
     if P['paramstring'] and not P['noloop']:
-        paramstring = optInputs_to_string(I, C_value, P['always_include'], P['always_exclude'], maxlen=P['maxlen'], delimiter=P['delimiter'])
+        paramstring = optInputs_to_string.optInputs_to_string(I, C_value, P['always_include'], P['always_exclude'], maxlen=P['maxlen'], delimiter=P['delimiter'])
     else:
         paramstring = ''
 
@@ -137,4 +139,14 @@ if __name__ == '__main__':
     I, C,_,_,_ = parse_optInputs_keyvalue(['key1', []], I, 'empty_means_unspecified', True)
 
     # use defaults to catch a spelling mistake
-    I,_,_,_,_ = parse_optInputs_keyvalue(['keys1', [4, 5, 6]], I)
+    I,_,_,_,_ = parse_optInputs_keyvalue(['key1', [4, 5, 6]], I)
+
+    # test paramstring
+    I = {'key1': [1, 2, 3], 'key2': list(range(1, 4)), 'key3': 'abc'}
+    _,_,_,_,paramstring = parse_optInputs_keyvalue(['key1', [4, 5, 6]], I, 'paramstring', True)
+    print(paramstring)
+
+    # test function return
+    I = {'key1': [1, 2, 3], 'key2': list(range(1, 4)), 'key3': 'abc'}
+    I,C,C_value,all_keys,paramstring = parse_optInputs_keyvalue(['key1', [4, 5, 6]], I, 'paramstring', True)
+    print(I,C,C_value,all_keys,paramstring)

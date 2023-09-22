@@ -8,7 +8,125 @@ import torchaudio
 from torch.cuda.amp import autocast
 import scipy
 torchaudio.set_audio_backend("sox_io")
-
+CONTRACTION_MAP = {
+"ain't": "is not",
+"aren't": "are not",
+"can't": "cannot",
+"can't've": "cannot have",
+"'cause": "because",
+"could've": "could have",
+"couldn't": "could not",
+"couldn't've": "could not have",
+"didn't": "did not",
+"doesn't": "does not",
+"don't": "do not",
+"hadn't": "had not",
+"hadn't've": "had not have",
+"hasn't": "has not",
+"haven't": "have not",
+"he'd": "he would",
+"he'd've": "he would have",
+"he'll": "he will",
+"he'll've": "he he will have",
+"he's": "he is",
+"how'd": "how did",
+"how'd'y": "how do you",
+"how'll": "how will",
+"how's": "how is",
+"i'd": "i would",
+"i'd've": "i would have",
+"i'll": "i will",
+"i'll've": "i will have",
+"i'm": "i am",
+"i've": "i have",
+"isn't": "is not",
+"it'd": "it would",
+"it'd've": "it would have",
+"it'll": "it will",
+"it'll've": "it will have",
+"it's": "it is",
+"let's": "let us",
+"ma'am": "madam",
+"mayn't": "may not",
+"might've": "might have",
+"mightn't": "might not",
+"mightn't've": "might not have",
+"must've": "must have",
+"mustn't": "must not",
+"mustn't've": "must not have",
+"needn't": "need not",
+"needn't've": "need not have",
+"o'clock": "of the clock",
+"oughtn't": "ought not",
+"oughtn't've": "ought not have",
+"shan't": "shall not",
+"sha'n't": "shall not",
+"shan't've": "shall not have",
+"she'd": "she would",
+"she'd've": "she would have",
+"she'll": "she will",
+"she'll've": "she will have",
+"she's": "she is",
+"should've": "should have",
+"shouldn't": "should not",
+"shouldn't've": "should not have",
+"so've": "so have",
+"so's": "so as",
+"that'd": "that would",
+"that'd've": "that would have",
+"that's": "that is",
+"there'd": "there would",
+"there'd've": "there would have",
+"there's": "there is",
+"they'd": "they would",
+"they'd've": "they would have",
+"they'll": "they will",
+"they'll've": "they will have",
+"they're": "they are",
+"they've": "they have",
+"to've": "to have",
+"wasn't": "was not",
+"we'd": "we would",
+"we'd've": "we would have",
+"we'll": "we will",
+"we'll've": "we will have",
+"we're": "we are",
+"we've": "we have",
+"weren't": "were not",
+"what'll": "what will",
+"what'll've": "what will have",
+"what're": "what are",
+"what's": "what is",
+"what've": "what have",
+"when's": "when is",
+"when've": "when have",
+"where'd": "where did",
+"where's": "where is",
+"where've": "where have",
+"who'll": "who will",
+"who'll've": "who will have",
+"who's": "who is",
+"who've": "who have",
+"why's": "why is",
+"why've": "why have",
+"will've": "will have",
+"won't": "will not",
+"won't've": "will not have",
+"would've": "would have",
+"wouldn't": "would not",
+"wouldn't've": "would not have",
+"y'all": "you all",
+"y'all'd": "you all would",
+"y'all'd've": "you all would have",
+"y'all're": "you all are",
+"y'all've": "you all have",
+"you'd": "you would",
+"you'd've": "you would have",
+"you'll": "you will",
+"you'll've": "you will have",
+"you're": "you are",
+"you've": "you have",
+}
 from deepspeech_pytorch.configs.train_config import SpectConfig, BiDirectionalConfig, AdamConfig, SGDConfig
 from deepspeech_pytorch.decoder import GreedyDecoder
 from deepspeech_pytorch.utils import load_model
@@ -19,12 +137,64 @@ from omegaconf import OmegaConf
 import pytorch_lightning as pl
 import soundfile as sf
 import pandas as pd
-
+from gensim.models import KeyedVectors
 from pycochleagram.cochleagram import human_cochleagram
 import soundfile as sf
 import scipy
 import numpy as np
 import matplotlib.pyplot as plt
+
+
+# This class is used for encoding words into numerical representations (vectors) using the GloVe model.
+class glove_encoder:
+    # The constructor of the glove_encoder class.
+    # Input: glove_input_file - str, path to the GloVe model file.
+    def __init__(self, glove_input_file):
+        # Load the GloVe model from a word2vec format file.
+        # The GloVe model is not binary and does not include a file header.
+        glove_model = KeyedVectors.load_word2vec_format(glove_input_file, binary=False, no_header=True)
+        self.glove_model = glove_model
+
+
+    # This method is used to encode a single word into a vector using the GloVe model.
+    # Input: word - str, a word to encode.
+    # Output: If the word is in the GloVe model, return a vector representation of the word.
+    # If not, print the word and return a zero vector of length 300.
+    def encode(self, word, auto_expand=True,CONTRACTION_MAP=CONTRACTION_MAP):
+        if self.glove_model.key_to_index.get(word) is not None:
+            return self.glove_model[word]
+        elif auto_expand and word in CONTRACTION_MAP.keys():
+            expanded_words = CONTRACTION_MAP[word].split()
+            print(f'Automatically expand {word} to {CONTRACTION_MAP[word]}')
+            return np.mean([self.encode(expanded_word) for expanded_word in expanded_words],axis=0)
+        else:
+            print(f'word can not be found in the GloVe model: {word}')
+            return np.zeros(300)
+
+    # This method is used to encode a sequence of words into a matrix using the GloVe model.
+    # Input: words_iterable - Iterable[str], a sequence of words to encode.
+    # word_onsets - Iterable[float], starting times for each word in the sequence.
+    # word_offsets - Iterable[float], ending times for each word in the sequence.
+    # time_length - int, the total length of the time sequence.
+    # sr - int, the sampling rate used for converting times to sample indices, default is 100.
+    # Output: A matrix of shape (time_length, 300) where each row is the vector representation of a word.
+    def encode_sequences(self, words_iterable, word_onsets, word_offsets, time_length, sr=100):
+        assert len(words_iterable) == len(word_onsets) == len(word_offsets)
+        features = np.zeros((time_length, 300))
+        t_stim = np.arange(time_length)/sr
+        for i in range(len(words_iterable)):
+            word = words_iterable[i]
+            onset = word_onsets[i]
+            offset = word_offsets[i]
+            indexs = (onset<=t_stim)&(t_stim<=offset)
+            features[indexs, :] = self.encode(word)
+
+        return features
+
+
+
+
+
 
 
 class SpectrogramParser(nn.Module):
@@ -107,7 +277,7 @@ MODEL_CFG = BiDirectionalConfig(rnn_type=RNNType.lstm, hidden_size=1024, hidden_
 OPTIM_CFG = AdamConfig(learning_rate=0.00015, learning_anneal=0.99, weight_decay=1e-05, eps=1e-08, betas=[0.9, 0.999])
 SPECT_CFG = SpectConfig(sample_rate=16000, window_size=0.02, window_stride=0.01, window=SpectrogramWindow.hamming)
 PRECISION = 16
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 class DeepSpeech(pl.LightningModule):
     def __init__(self, labels=LABELS, model_cfg=MODEL_CFG, precision=PRECISION, optim_cfg=OPTIM_CFG, spect_cfg=SPECT_CFG):
@@ -294,13 +464,13 @@ class DeepSpeech(pl.LightningModule):
             
             # make into 4D tensor of [batch x channel x frequency x time]
             # and move to same device as the model
-            x = x.T[np.newaxis, np.newaxis, ...].contiguous().to(device)
+            x = x.T[np.newaxis, np.newaxis, ...].contiguous().to(device=self.device)
             
             for module in self.conv.seq_module:
                 x = module(x)
                 mask = torch.BoolTensor(x.size()).fill_(0)
                 if x.is_cuda:
-                    mask = mask.cuda()
+                    mask = mask.to(self.device)
                 for i, length in enumerate(output_lengths):
                     length = length.item()
                     if (mask[i].size(2) - length) > 0:
@@ -343,41 +513,43 @@ class DeepSpeech(pl.LightningModule):
         
         return activation
 
-def extract_deepSpeech_feature(wav_path,state_dict_path):
-    '''
-    wav_path: the path of the wav file
-    state_dict_path: the path of the pretrained model weight
-    '''
+
+class deepspeech_encoder:
+
+    def __init__(self, state_dict_path,device='cpu'):
+
+        model = DeepSpeech().to(device).eval()
+        model.load_state_dict(torch.load(state_dict_path,map_location=device)['state_dict'])
+        self.model = model
+        self.device = device
+
+    def extract_deepSpeech_feature(self,wav_path):
+        '''
+        wav_path: the path of the wav file
+        state_dict_path: the path of the pretrained model weight
+        '''
+
+        #read test.wav
+        waveform, sample_rate = sf.read(wav_path)
+        if sample_rate != 16000:
+            waveform = scipy.signal.resample(waveform, int(len(waveform) * 16000 / sample_rate))
+        waveform = waveform.reshape(-1,1)
+        waveform = torch.from_numpy(waveform).float().to(self.device)
+
+        dfs = []
+        for i in range(8):
+            activate_layer = self.model.activation_fx(i)
+            #get activation of first layer
+            activation = activate_layer(waveform)
+            activation = activation.detach().numpy()
+            time_stamp = np.arange(-0.5,(len(activation)-1)*320,step=320)
+            assert len(activation) == len(time_stamp)
+            df = pd.DataFrame({'time_stamp':[time_stamp],'activation':[activation],'layer':[i]},index=[i])
+            dfs.append(df)
+        df = pd.concat(dfs)
+        return df
 
 
-    # Pretrained DeepSpeech2 model
-    model = DeepSpeech().to(device).eval()
-    model.load_state_dict(torch.load(state_dict_path)['state_dict'])
-
-    #read test.wav
-    waveform, sample_rate = sf.read(wav_path)
-    if sample_rate != 16000:
-        waveform = scipy.signal.resample(waveform, int(len(waveform) * 16000 / sample_rate))
-    waveform = waveform.reshape(-1,1)
-    waveform = torch.from_numpy(waveform).float().to(device)
-    dfs = []
-    for i in range(8):
-        activate_layer = model.activation_fx(i)
-        #get activation of first layer
-        activation = activate_layer(waveform)
-        activation = activation.detach().numpy()
-        time_stamp = np.arange(-0.5,(len(activation)-1)*320,step=320)
-        print(activation.shape)
-        assert len(activation) == len(time_stamp)
-        df = pd.DataFrame({'time_stamp':[time_stamp],'activation':[activation],'layer':[i]},index=[i])
-        dfs.append(df)
-    df = pd.concat(dfs)
-    return df
-
-def extract_deepSpeech_feature_and_save(wav_path,state_dict_path):
-    save_path = wav_path.replace('.wav','.pkl')
-    df = extract_deepSpeech_feature(wav_path,state_dict_path)
-    df.to_pickle(save_path)
 
 def plot_average_envelop_and_origin(wav_path,feature_df):
     from scipy.signal import hilbert
@@ -423,6 +595,20 @@ def get_cochleagram(wav_path,output_sr=100,nonlinearity='power',n=None):
     coch = scipy.signal.resample(coch, np.int32(np.round(output_sr/sr*coch.shape[1])), axis=1)
     coch = coch.T
     return coch
+
+
+
+if __name__ == '__main__':
+    import dill
+    # initialize glove encoder
+    glove_input_file = '/home/gliao2/samlab_Sigurd/snormanh_lab_python/glove.840B.300d.txt'
+    encoder_glove = glove_encoder(glove_input_file)
+
+    #save glove_encoder
+    with open('glove_encoder.pkl','wb') as f:
+        dill.dump(encoder_glove,f)
+
+
 
 if __name__ == '__main__':
     #example of get_cochleagram
