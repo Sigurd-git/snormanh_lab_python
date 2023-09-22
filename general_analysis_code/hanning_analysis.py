@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io
-from general_analysis_code_python.preprocess import generate_onehot_features
+from general_analysis_code.preprocess import generate_onehot_features
 import pandas as pd
 def hanning_basis(t, n_win, hanning_width, scale):
     '''
