@@ -3,7 +3,8 @@ import scipy
 import re
 from scipy.interpolate import interp1d
 from scipy import signal
-
+from scipy.linalg import svd
+import sys
 from einops import rearrange
 def lag(X,lag_num,format):
     '''
@@ -201,7 +202,7 @@ def align_time(array,t_origin,t_new,format,interpolate=True):
     array: np array, the array to be aligned
     t_origin: original time points, 1d array, corresponding to the array
     t_new: new time points, 1d array
-    format: name of dimensions, like 'b c t f ' or 't f'
+    format: name of dimensions, like 'b c t f ' or 't f', t should be concluded in the format, the other dimensions can be named arbitrarily.
     interpolate: whether to interpolate the array, if False, the new time points will be the nearest time points of the resampled array, and new time points will be included in the return value
 
     Example:
@@ -273,60 +274,6 @@ def align_time(array,t_origin,t_new,format,interpolate=True):
         return array_pad,t_pad
 
 
-class rearrange_and_reverse:
-    def __init__(self,X,format):
-        '''
-        format: name of dimensions and the reduced dimensions, like 'b c t f -> (b c f) t'
-        this class is used to rearrange the array to MD array
-        its workflow is like this: 'b c t f -> b c t f -> b c t*f'
-        Also, it can reverse the process.
-
-        Example1:
-        X = np.arange(24).reshape(1,2,3,4)
-        format = 'b c t f -> (b c f) t'
-        rearrane_ = rearrange_and_reverse(X,format)
-        X_MD = rearrane_._ND_to_MD(X)
-        X_new = rearrane_._MD_to_ND(X_MD)
-        print(X_MD)
-        print(X_new)
-
-        Example2:
-        X = np.arange(24).reshape(1,2,3,4)
-        format = 'b c t f -> (b c f) t'
-        rearrane_ = rearrange_and_reverse(X,format)
-        X_MD = np.mean(X_MD,axis=-1,keepdims=True)
-        X_new = rearrane_._MD_to_ND(X_MD,t=1)
-        print(X_MD)
-        print(X_new)
-        '''
-        #remove spaces at the beginning and end
-        format = format.strip()
-
-        #analyse format, splited by->
-        self.format_before,self.format_after = re.split('->',format)
-
-        #get the name and length of dimensions
-        format_before = self.format_before.strip()
-        format_before = re.split('\s+',format_before)
-        dimnames = format_before
-        dimlengths = [X.shape[format_before.index(dimname)] for dimname in format_before]
-
-        # {dimnames:dimlengths}
-        self.dimdict = dict(zip(dimnames,dimlengths))
-
-    def _ND_to_MD(self,X):
-        # X: np array
-        X_MD = rearrange(X,self.format_before+'->'+self.format_after)
-        return X_MD
-
-    def _MD_to_ND(self,X_MD,**kwargs):
-        # you can use this function to reverse the process of _ND_to_MD
-        # X_MD: m Dimension array
-        # kwargs: the dimension names and lengths of the reversed array, it will cover the original dimension names and lengths
-        dimdict = self.dimdict
-        dimdict.update(kwargs)
-        X = rearrange(X_MD,self.format_after+'->'+self.format_before,**dimdict)
-        return X
 
 
 
@@ -377,6 +324,40 @@ def generate_gonset_features(onehot_onsets,time_length,sr=100):
         feature_tensor[indexs,0] = 1
     return feature_tensor
 
+
+
+def pca_from_svd(F, std_feats, demean_feats, n_components):
+
+
+    assert not np.isnan(F).any()
+
+    # optionally remove mean and standard deviation
+    if demean_feats:
+        mF = np.mean(F, axis=0)
+    else:
+        mF = np.zeros(F.shape[1])
+    F_formatted = F - mF
+
+    if std_feats:
+        normF = np.std(F, axis=0)
+    else:
+        normF = np.ones(F.shape[1])
+    normF[normF == 0] = 1
+    F_formatted = F_formatted / normF
+
+    U, s, Vt = svd(F_formatted, full_matrices=False)
+
+    #select the first n_components
+    U = U[:,:n_components]
+    s = s[:n_components]
+
+
+    #reconstruct F
+    F_recon = U*s
+
+    return F_recon
+
+
 if __name__ == '__main__':
     #construct a test matrix for lag
     X = np.arange(24).reshape(2,3,4)
@@ -388,19 +369,3 @@ if __name__ == '__main__':
     t_origin = np.arange(4)
     t_new = np.arange(0,3.9,0.1)
     X_new = align_time(X,t_origin,t_new,'b t f')
-
-    #construct a test matrix for rearrange_to_MD
-    X = np.arange(24).reshape(1,2,3,4)
-    format = 'b c t f -> (b c f) t'
-    rearrane_ = rearrange_and_reverse(X,format)
-
-    X_MD = rearrane_._ND_to_MD(X)
-    X_new = rearrane_._MD_to_ND(X_MD)
-    print(X_MD)
-    print(X_new)
-    X_MD = np.mean(X_MD,axis=-1,keepdims=True)
-    X_new = rearrane_._MD_to_ND(X_MD,t=1)
-    print(X_MD)
-    print(X_new.shape)
-    pass
-

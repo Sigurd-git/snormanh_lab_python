@@ -126,6 +126,8 @@ CONTRACTION_MAP = {
 "you'll've": "you will have",
 "you're": "you are",
 "you've": "you have",
+"girl's": "girl",
+"husband's": "husband",
 }
 from deepspeech_pytorch.configs.train_config import SpectConfig, BiDirectionalConfig, AdamConfig, SGDConfig
 from deepspeech_pytorch.decoder import GreedyDecoder
@@ -523,18 +525,19 @@ class deepspeech_encoder:
         self.model = model
         self.device = device
 
-    def extract_deepSpeech_feature(self,wav_path):
-        '''
-        wav_path: the path of the wav file
-        state_dict_path: the path of the pretrained model weight
+    def extract_deepSpeech_feature(self,waveform, sample_rate):
         '''
 
-        #read test.wav
-        waveform, sample_rate = sf.read(wav_path)
+        state_dict_path: the path of the pretrained model weight
+        '''
+        waveform = waveform.to(self.device)
         if sample_rate != 16000:
-            waveform = scipy.signal.resample(waveform, int(len(waveform) * 16000 / sample_rate))
+            waveform = torchaudio.functional.resample(
+                waveform, sample_rate, 16000
+            )
+
         waveform = waveform.reshape(-1,1)
-        waveform = torch.from_numpy(waveform).float().to(self.device)
+
 
         dfs = []
         for i in range(8):
@@ -601,45 +604,45 @@ def get_cochleagram(wav_path,output_sr=100,nonlinearity='power',n=None):
 if __name__ == '__main__':
     import dill
     # initialize glove encoder
-    glove_input_file = '/home/gliao2/samlab_Sigurd/snormanh_lab_python/glove.840B.300d.txt'
+    glove_input_file = '/home/gliao2/samlab_Sigurd/feature_extration/code/utils/glove.840B.300d.txt'
     encoder_glove = glove_encoder(glove_input_file)
 
     #save glove_encoder
-    with open('glove_encoder.pkl','wb') as f:
+    with open('/home/gliao2/samlab_Sigurd/feature_extration/code/utils/glove_encoder.pkl','wb') as f:
         dill.dump(encoder_glove,f)
 
 
 
-if __name__ == '__main__':
-    #example of get_cochleagram
-    wav1 = '/scratch/snormanh_lab/shared/Sigurd/stim5_alarm_clock.wav'
-    coch = get_cochleagram(wav1)
-    #plot the cochleagram
-    plt.imshow(coch.T, aspect='auto', origin='lower', cmap='jet')
-    plt.savefig(wav1.replace('.wav', '.png'))
-    plt.close()
+# if __name__ == '__main__':
+#     #example of get_cochleagram
+#     wav1 = '/scratch/snormanh_lab/shared/Sigurd/stim5_alarm_clock.wav'
+#     coch = get_cochleagram(wav1)
+#     #plot the cochleagram
+#     plt.imshow(coch.T, aspect='auto', origin='lower', cmap='jet')
+#     plt.savefig(wav1.replace('.wav', '.png'))
+#     plt.close()
 
-    wav2 = '/scratch/snormanh_lab/shared/Sigurd/LJ001-0001.wav'
-    coch = get_cochleagram(wav2)
-    #plot the cochleagram
-    plt.imshow(coch.T, aspect='auto', origin='lower', cmap='jet')
-    plt.savefig(wav2.replace('.wav', '.png'))
-    plt.close()
-    pass
+#     wav2 = '/scratch/snormanh_lab/shared/Sigurd/LJ001-0001.wav'
+#     coch = get_cochleagram(wav2)
+#     #plot the cochleagram
+#     plt.imshow(coch.T, aspect='auto', origin='lower', cmap='jet')
+#     plt.savefig(wav2.replace('.wav', '.png'))
+#     plt.close()
+#     pass
 
 
 
-if __name__ == "__main__":
-    #example of extract_deepSpeech_feature
-    feature_df = extract_deepSpeech_feature('test.wav','/scratch/snormanh_lab/shared/Sigurd/PyTCI/Examples/resources/deepspeech2-pretrained.ckpt')
-    plot_average_envelop_and_origin('test.wav',feature_df)
+# if __name__ == "__main__":
+#     #example of extract_deepSpeech_feature
+#     feature_df = extract_deepSpeech_feature('test.wav','/scratch/snormanh_lab/shared/Sigurd/PyTCI/Examples/resources/deepspeech2-pretrained.ckpt')
+#     plot_average_envelop_and_origin('test.wav',feature_df)
     
-    #for example:
-    # print the layers
-    print(feature_df['layer'].unique())
-    #get the time stamp of the second layer
-    time_stamp = feature_df[feature_df['layer']==1]['time_stamp'].values[0]
-    print(time_stamp)
-    #get the activation of the second layer
-    activation = feature_df[feature_df['layer']==1]['activation'].values[0]
-    print(activation)
+#     #for example:
+#     # print the layers
+#     print(feature_df['layer'].unique())
+#     #get the time stamp of the second layer
+#     time_stamp = feature_df[feature_df['layer']==1]['time_stamp'].values[0]
+#     print(time_stamp)
+#     #get the activation of the second layer
+#     activation = feature_df[feature_df['layer']==1]['activation'].values[0]
+#     print(activation)
