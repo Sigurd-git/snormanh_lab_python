@@ -1,9 +1,8 @@
 import numpy as np
 from sklearn import linear_model
 from sklearn.cross_decomposition import PLSRegression
-from general_analysis_code_python.ridge_via_svd import ridge_via_svd
+from general_analysis_code.ridge_via_svd import ridge_via_svd
 
-#TODO: ridge, lasso, pls, pcreg
 
 
 

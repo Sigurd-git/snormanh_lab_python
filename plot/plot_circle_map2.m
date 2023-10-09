@@ -15,7 +15,7 @@ shared_directory = '/scratch/snormanh_lab/shared/';
 addpath(genpath([shared_directory '/code/lab-fmri-code'])); % need plotting code from this directory
 addpath(genpath([shared_directory '/code/lab-analysis-code'])); % need plotting code from this directory
 addpath(genpath([shared_directory '/code/lab-intracranial-code/'])); % need plotting code from this directory
-addpath(genpath([shared_directory '/code/export_fig_v3']));
+addpath(genpath([shared_directory '/code/export_fig']));
 
 clear I;
 I.cmap = 'cbrewer-blue-red';
@@ -57,8 +57,10 @@ end
 % plot the map
 if I.plot
     plot_fsaverage_1D_overlay_v2(map, hemi, 'colormap', I.cmap, 'color_range', I.range, 'figh', I.figh);
+    % save the figure and do not print text
+    evalc('export_fig(out_path, ''-png'', ''-r100'', ''-nocrop'');');
     % export_fig(out_path, '-png','-r100','-nocrop');
     set(I.figh, 'PaperPosition', [4 4 5 5]);
-    saveas(I.figh, out_path, 'png');
+    % saveas(I.figh, out_path, 'png');
 end
 
