@@ -1,4 +1,6 @@
 import textgrid
+import pandas as pd
+
 def get_onset_offset_phones(textgrid):
     """
     Get onset and offset of each phone in a textgrid
@@ -124,3 +126,93 @@ if __name__ == '__main__':
         #save as a matlab file
         # mat_file = textgrid_file.replace('.TextGrid','_word.mat')
         # sio.savemat(mat_file,{'words':words})
+        
+
+
+def parse_data(csv_path):
+    """
+    Parses a CSV file containing interval data and returns a list of dictionaries,
+    where each dictionary represents an interval and has keys "xmin" and "xmax".
+    """
+    csv = pd.read_csv(csv_path)
+
+    intervals = []
+    
+    for i in range(len(csv) - 1):
+        parts = csv.iloc[i]
+        text = "" if parts[0] == ">" else parts[0]
+        start = float(parts[1])
+        end = float(csv.iloc[i+1][1])
+        intervals.append({"xmin": start, "xmax": end, "text": text})
+    return intervals
+
+def create_textgrid_tier(name, intervals):
+    """
+    Creates a TextGrid tier with the given name and intervals.
+    Returns a string representation of the tier.
+    """
+    tier = [
+        f'        class = "IntervalTier"', 
+        f'        name = "{name}"', 
+        '        xmin = 0', 
+        f'        xmax = {intervals[-1]["xmax"]}', 
+        f'        intervals: size = {len(intervals)}'
+    ]
+    
+    for i, interval in enumerate(intervals):
+        tier.append(f'        intervals [{i+1}]:')
+        tier.append(f'            xmin = {interval["xmin"]}')
+        tier.append(f'            xmax = {interval["xmax"]}')
+        tier.append(f'            text = "{interval["text"]}"')
+    
+    return "\n".join(tier)
+
+
+
+
+def csv_to_textgrid(phoneme_csv_path, word_csv_path, out_path):
+    """
+    Converts two CSV files containing interval data (one for phonemes and one for words)
+    into a TextGrid file and saves it to the specified output path.
+
+    Args:
+        phoneme_csv_path (str): Path to the CSV file containing phoneme interval data.
+        word_csv_path (str): Path to the CSV file containing word interval data.
+        out_path (str): Path to save the resulting TextGrid file.
+
+    Returns:
+        None
+    """
+    phoneme_intervals = parse_data(phoneme_csv_path)
+    word_intervals = parse_data(word_csv_path)
+    phoneme_tier = create_textgrid_tier("phones", phoneme_intervals)
+    word_tier = create_textgrid_tier("words", word_intervals)
+
+    textgrid_content = [
+    'File type = "ooTextFile"',
+    'Object class = "TextGrid"',
+    '',
+    'xmin = 0',
+    f'xmax = {phoneme_intervals[-1]["xmax"]}',
+    'tiers? <exists>',
+    'size = 2',
+    'item []:',
+    f'    item [1]:\n{word_tier}',
+    f'    item [2]:\n{phoneme_tier}',
+]
+
+    textgrid_str = "\n".join(textgrid_content)
+
+    # Saving the TextGrid content to a file
+    textgrid_file_path = out_path
+    with open(textgrid_file_path, 'w') as file:
+        file.write(textgrid_str)
+
+
+if __name__ == '__main__':
+
+    phoneme_csv_path = '/Users/sigurd/Desktop/natural-fast.csv'
+    word_csv_path = '/Users/sigurd/Desktop/natural-fast-word.csv'
+    out_path = 'test1.TextGrid'
+    
+    csv_to_textgrid(phoneme_csv_path, word_csv_path, out_path)
