@@ -145,6 +145,8 @@ import soundfile as sf
 import scipy
 import numpy as np
 import matplotlib.pyplot as plt
+import dill
+import os
 
 
 # This class is used for encoding words into numerical representations (vectors) using the GloVe model.
@@ -154,9 +156,19 @@ class glove_encoder:
     def __init__(self, glove_input_file):
         # Load the GloVe model from a word2vec format file.
         # The GloVe model is not binary and does not include a file header.
-        glove_model = KeyedVectors.load_word2vec_format(glove_input_file, binary=False, no_header=True)
-        self.glove_model = glove_model
+        
+        input_dir = os.path.dirname(glove_input_file)
+        out_put_file = os.path.join(input_dir,'glove_encoder.pkl')
+        if glove_input_file.endswith('.txt'):
+            glove_model = KeyedVectors.load_word2vec_format(glove_input_file, binary=False, no_header=True)
+            with open(out_put_file, 'wb') as f:
+                dill.dump(glove_model, f)
 
+        elif glove_input_file.endswith('.pkl'):
+            with open(glove_input_file, 'rb') as f:
+                glove_model = dill.load(f)
+
+        self.glove_model = glove_model
 
     # This method is used to encode a single word into a vector using the GloVe model.
     # Input: word - str, a word to encode.
@@ -518,10 +530,12 @@ class DeepSpeech(pl.LightningModule):
 
 class deepspeech_encoder:
 
-    def __init__(self, state_dict_path,device='cpu'):
+    def __init__(self, state_dict_path,device='cpu',compile_torch=True):
 
         model = DeepSpeech().to(device).eval()
         model.load_state_dict(torch.load(state_dict_path,map_location=device)['state_dict'])
+        if compile_torch:
+            model = torch.compile(model)
         self.model = model
         self.device = device
 
@@ -602,14 +616,9 @@ def get_cochleagram(wav_path,output_sr=100,nonlinearity='power',n=None):
 
 
 if __name__ == '__main__':
-    import dill
-    # initialize glove encoder
     glove_input_file = '/home/gliao2/samlab_Sigurd/feature_extration/code/utils/glove.840B.300d.txt'
     encoder_glove = glove_encoder(glove_input_file)
 
-    #save glove_encoder
-    with open('/home/gliao2/samlab_Sigurd/feature_extration/code/utils/glove_encoder.pkl','wb') as f:
-        dill.dump(encoder_glove,f)
 
 
 

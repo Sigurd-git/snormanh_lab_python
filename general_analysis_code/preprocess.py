@@ -248,6 +248,7 @@ def align_time(array,t_origin,t_new,format,interpolate=True):
         pad_matrix = np.zeros(pad_matrix_shape)
         array_pad = np.concatenate((pad_matrix,array_resample),axis=time_dim)
         t_pad = np.concatenate((np.linspace(t_new[0],t_resample[0],num_pad_before),t_resample),axis=0)
+        print(f'pad {num_pad_before} 0s before the array')
 
     if num_pad_after>0:
         pad_matrix_shape = list(array_resample.shape)
@@ -260,6 +261,7 @@ def align_time(array,t_origin,t_new,format,interpolate=True):
         else:
             array_pad = np.concatenate((array_resample,pad_matrix),axis=time_dim)
             t_pad = np.concatenate((t_resample,np.linspace(t_resample[-1],t_new[-1],num_pad_after)),axis=0)
+        print(f'pad {num_pad_after} 0s after the array')
 
     if num_pad_before<=0 and num_pad_after<=0:
         array_pad = array_resample
@@ -299,7 +301,7 @@ def generate_onehot_features(all_labels, onehot_label, onehot_onset, onehot_offs
     onehot_onset = np.array(onehot_onset)
     onehot_offset = np.array(onehot_offset)
     
-    feature_tensor = np.full((time_length,len(all_labels)),np.nan,dtype=np.int8)
+    feature_tensor = np.full((time_length,len(all_labels)),0,dtype=np.int8)
 
     for onehot_index in range(len(onehot_label)):
         onehot = onehot_label[onehot_index]
@@ -314,6 +316,46 @@ def generate_onehot_features(all_labels, onehot_label, onehot_onset, onehot_offs
             indexs = np.where(indexs)[0]
         feature_tensor[indexs,all_labels==onehot] = 1
     return feature_tensor
+def reverse_onehot_features(feature_tensor, all_labels, sr=100):
+    """
+    This function reverses the one-hot encoded features to obtain the labels, onsets, and offsets.
+
+    Parameters:
+    feature_tensor (numpy.array): A 2D array with one-hot encoded features.
+    all_labels (numpy.array): Array of all possible labels.
+    sr (int, optional): Sampling rate. Defaults to 100.
+
+    Returns:
+    onehot_label (numpy.array): Array of labels obtained from the feature_tensor.
+    onehot_onset (numpy.array): Array of onset times for each label in onehot_label.
+    onehot_offset (numpy.array): Array of offset times for each label in onehot_label.
+    """
+    #TODO: test it!!!!!
+    onehot_label = []
+    onehot_onset = []
+    onehot_offset = []
+
+    t_stim = np.arange(feature_tensor.shape[0]) / sr
+
+    for label_index, label in enumerate(all_labels):
+        column = feature_tensor[:, label_index]
+        start_indices = np.where(np.diff(column) == 1)[0] + 1  # +1 because diff gives index of change, but we want the index after
+        end_indices = np.where(np.diff(column) == -1)[0]
+
+        # If the column starts with 1, then the onset is at the very beginning
+        if column[0] == 1:
+            start_indices = np.insert(start_indices, 0, 0)
+
+        # If the column ends with 1, then the offset is at the very end
+        if column[-1] == 1:
+            end_indices = np.append(end_indices, feature_tensor.shape[0] - 1)
+
+        for s, e in zip(start_indices, end_indices):
+            onehot_label.append(label)
+            onehot_onset.append(t_stim[s])
+            onehot_offset.append(t_stim[e])
+
+    return np.array(onehot_label), np.array(onehot_onset), np.array(onehot_offset)
 
 def generate_gonset_features(onehot_onsets,time_length,sr=100):
     feature_tensor = np.zeros((time_length,1))
