@@ -3,7 +3,7 @@ from himalaya.ridge import RidgeCV,Ridge
 from himalaya.backend import set_backend
 import numpy as np
 from sklearn.model_selection import GroupKFold
-
+from sam_code.regress_weights_from_2way_crossval import regress_weights_from_2way_crossval
 alphas= np.logspace(-100, 100, 201,base=2)
 
 def wrapper_cv(X, y, groups):
@@ -12,7 +12,7 @@ def wrapper_cv(X, y, groups):
     for train_index, test_index in cv.split(X, y, groups):
         yield train_index, test_index
 
-def ridge_custom_groups(X, Y, groups, alphas=alphas,refit=True,autocast=False):
+def regress_from_2way_crossval_himalaya(X, Y, groups, alphas=alphas,refit=True,autocast=False):
     cv = wrapper_cv(X, Y, groups)
     if autocast:
         import torch
@@ -44,12 +44,35 @@ def ridge_custom_groups(X, Y, groups, alphas=alphas,refit=True,autocast=False):
         return best_alphas
 
 
+def regress_from_2way_crossval_sam(X, Y, groups, alphas=alphas,refit=True):
+    
+    B, best_K, mse, r,_,_ = regress_weights_from_2way_crossval(X, 
+                Y, 
+                folds=groups, 
+                method='ridge',
+                std_feats=False,
+                demean_feats=True,
+                regularization_metric="unnormalized-squared-error")
+    if refit:
+        refit_model = Ridge(alpha=alphas,fit_intercept=True)
+        
+        # Here we construct simulated data just to enable the model to call the fit method. This step is to bypass certain checks.
+        dummy_X = np.array(range(len(B[1:])))[np.newaxis,:]
+        dummy_y = np.dot(dummy_X, B[1:]) + B[0]
+        refit_model.fit(dummy_X, dummy_y)
+        
+        # set the weights
+        refit_model.intercept_ = B[0]
+        refit_model.coef_ = B[1:]
+
+        return refit_model, best_K
+    
 if __name__ == '__main__':
     n_samples, n_features, n_targets = 1000, 500, 4
     X = np.random.randn(n_samples, n_features)
     Y = np.random.randn(n_samples, n_targets)
     groups = np.random.randint(0, 3, n_samples)
 
-    model = ridge_custom_groups(X, Y, groups)
+    model = regress_from_2way_crossval_sam(X, Y, groups)
     
     
