@@ -66,7 +66,13 @@ def regress_from_2way_crossval_sam(X, Y, groups, alphas=alphas,refit=True):
         refit_model.coef_ = B[1:]
 
         return refit_model, best_K
-    
+def regress_from_2way_crossval(X, Y, groups, alphas=alphas,refit=True,autocast=False,backend='himalaya'):
+    if backend == 'himalaya':
+        return regress_from_2way_crossval_himalaya(X, Y, groups, alphas=alphas,refit=refit,autocast=autocast)
+    elif backend == 'sam':
+        return regress_from_2way_crossval_sam(X, Y, groups, alphas=alphas,refit=refit)
+    else:
+        raise ValueError(f'backend {backend} is not supported')
 if __name__ == '__main__':
     n_samples, n_features, n_targets = 1000, 500, 4
     X = np.random.randn(n_samples, n_features)
