@@ -1,10 +1,16 @@
 import numpy as np
-from himalaya.ridge import RidgeCV,Ridge
+from himalaya.ridge import RidgeCV, Ridge
 from himalaya.backend import set_backend
 import numpy as np
 from sklearn.model_selection import GroupKFold
 from sam_code.regress_weights_from_2way_crossval import regress_weights_from_2way_crossval
-alphas= np.logspace(-100, 100, 201,base=2)
+import dask.array as da
+alphas = np.logspace(-100, 100, 201, base=2)
+import dask
+import torch
+
+#make_regression
+from sklearn.datasets import make_regression
 
 def wrapper_cv(X, y, groups):
     n_split = len(np.unique(groups))
@@ -12,73 +18,78 @@ def wrapper_cv(X, y, groups):
     for train_index, test_index in cv.split(X, y, groups):
         yield train_index, test_index
 
-def regress_from_2way_crossval_himalaya(X, Y, groups, alphas=alphas,refit=True,autocast=False):
+
+def regress_from_2way_crossval_himalaya(X, Y, groups, alphas=alphas,backend='torch',half=True):
     cv = wrapper_cv(X, Y, groups)
-    if autocast:
-        import torch
-        set_backend('torch')
-        with torch.cuda.amp.autocast(enabled=True):
-            model = RidgeCV(alphas=alphas, cv=cv,fit_intercept=True)
-            model.fit(X, Y)
-    else:
-        model = RidgeCV(alphas=alphas, cv=cv,fit_intercept=True)
-        model.fit(X, Y)
+    set_backend(backend)
+    if half:
+        X = X.astype(np.float32)
+        Y = Y.astype(np.float32)
+    model = RidgeCV(alphas=alphas, cv=cv, fit_intercept=True,solver_params={'nsample_large':True})
+    model.fit(X, Y)
     best_alphas = model.best_alphas_
-    #alert if best_alpha is at the edge of the range
-    for index,best_alpha in enumerate(best_alphas):
-        if best_alpha == alphas[0] or best_alpha == alphas[-1]:
-            print(f'Warning: best alpha for target{index} is {best_alpha}, which is at the edge of the range')
-        
-    
+    return model, best_alphas
+
+
+
+def regress_from_2way_crossval_sam(X, Y, groups, alphas=alphas, refit=True):
+
+    B, best_K, mse, r, _, _ = regress_weights_from_2way_crossval(X,
+                                                                 Y,
+                                                                 folds=groups,
+                                                                 method='ridge',
+                                                                 std_feats=False,
+                                                                 demean_feats=True,
+                                                                 regularization_metric="unnormalized-squared-error")
     if refit:
-        if autocast:
-            with torch.cuda.amp.autocast(enabled=True):
-                refit_model = Ridge(alpha=best_alphas,fit_intercept=True)
-                refit_model.fit(X, Y)
-        else:
-            refit_model = Ridge(alpha=best_alphas,fit_intercept=True)
-            refit_model.fit(X, Y)
+        refit_model = Ridge(alpha=alphas, fit_intercept=True)
 
-        return refit_model, best_alphas
-    else:
-        return best_alphas
-
-
-def regress_from_2way_crossval_sam(X, Y, groups, alphas=alphas,refit=True):
-    
-    B, best_K, mse, r,_,_ = regress_weights_from_2way_crossval(X, 
-                Y, 
-                folds=groups, 
-                method='ridge',
-                std_feats=False,
-                demean_feats=True,
-                regularization_metric="unnormalized-squared-error")
-    if refit:
-        refit_model = Ridge(alpha=alphas,fit_intercept=True)
-        
-        # Here we construct simulated data just to enable the model to call the fit method. This step is to bypass certain checks.
-        dummy_X = np.array(range(len(B[1:])))[np.newaxis,:]
-        dummy_y = np.dot(dummy_X, B[1:]) + B[0]
-        refit_model.fit(dummy_X, dummy_y)
-        
         # set the weights
-        refit_model.intercept_ = B[0]
-        refit_model.coef_ = B[1:]
+        refit_model.assign(B[1:],B[0],X)
 
         return refit_model, best_K
-def regress_from_2way_crossval(X, Y, groups, alphas=alphas,refit=True,autocast=False,backend='himalaya'):
+
+
+def regress_from_2way_crossval(X, Y, groups, alphas=alphas, refit=True, autocast=False, backend='himalaya'):
     if backend == 'himalaya':
-        return regress_from_2way_crossval_himalaya(X, Y, groups, alphas=alphas,refit=refit,autocast=autocast)
+        return regress_from_2way_crossval_himalaya(X, Y, groups, alphas=alphas, refit=refit, autocast=autocast)
     elif backend == 'sam':
-        return regress_from_2way_crossval_sam(X, Y, groups, alphas=alphas,refit=refit)
+        return regress_from_2way_crossval_sam(X, Y, groups, alphas=alphas, refit=refit)
     else:
         raise ValueError(f'backend {backend} is not supported')
-if __name__ == '__main__':
-    n_samples, n_features, n_targets = 1000, 500, 4
-    X = np.random.randn(n_samples, n_features)
-    Y = np.random.randn(n_samples, n_targets)
-    groups = np.random.randint(0, 3, n_samples)
 
-    model = regress_from_2way_crossval_sam(X, Y, groups)
+
+if __name__ == '__main__':
+
+    import time
+    n_samples, n_features, n_targets = 90000, 200, 300
+    X,Y = make_regression(n_samples=n_samples, n_features=n_features, n_targets=n_targets, random_state=0, noise=1000, bias=3.0)
+    groups = np.random.randint(0, 3, n_samples)
     
+    start_time = time.time()
+    X = X.astype(np.float32)
+    Y = Y.astype(np.float32)
+    refit_model, best_K_h = regress_from_2way_crossval_himalaya(X, Y, groups,backend='numpy')
+    Y_hat_h = refit_model.predict(X)
+    rs_h = [np.corrcoef(Y_hat_h[:,i], Y[:,i])[0, 1] for i in range(Y.shape[1])]
+
+    end_time = time.time()
+    elapsed_time = end_time-start_time
+    print(f'himalaya elapsed time: {elapsed_time}')
+
+
+    # set_backend('numpy')
+    # start_time = time.time()
+    # refit_model, best_K_s = regress_from_2way_crossval_sam(X, Y, groups)
+    # Y_hat_s = refit_model.predict(X)
+    # rs_s = [np.corrcoef(Y_hat_s[:,i], Y[:,i])[0, 1] for i in range(Y.shape[1])]
+    # end_time = time.time()
+    # elapsed_time2 = end_time-start_time
+    # print(f'sam elapsed time: {elapsed_time2}')
     
+    # print(f'Acceleration fold: {elapsed_time2/elapsed_time}')
+    # #isclose(rs_h, rs_s)
+    # print(np.where(np.isclose(rs_h, rs_s,atol=1e-3)==False))
+
+    
+    pass

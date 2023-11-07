@@ -248,7 +248,7 @@ def align_time(array,t_origin,t_new,format,interpolate=True):
         pad_matrix = np.zeros(pad_matrix_shape)
         array_pad = np.concatenate((pad_matrix,array_resample),axis=time_dim)
         t_pad = np.concatenate((np.linspace(t_new[0],t_resample[0],num_pad_before),t_resample),axis=0)
-        print(f'pad {num_pad_before} 0s before the array')
+        print(f'pad {num_pad_before} before the array')
 
     if num_pad_after>0:
         pad_matrix_shape = list(array_resample.shape)
@@ -261,7 +261,7 @@ def align_time(array,t_origin,t_new,format,interpolate=True):
         else:
             array_pad = np.concatenate((array_resample,pad_matrix),axis=time_dim)
             t_pad = np.concatenate((t_resample,np.linspace(t_resample[-1],t_new[-1],num_pad_after)),axis=0)
-        print(f'pad {num_pad_after} 0s after the array')
+        print(f'pad {num_pad_after} after the array')
 
     if num_pad_before<=0 and num_pad_after<=0:
         array_pad = array_resample
@@ -314,6 +314,10 @@ def generate_onehot_features(all_labels, onehot_label, onehot_onset, onehot_offs
         if onset_feature:
             #only leave the first True index to be True
             indexs = np.where(indexs)[0]
+            if len(indexs)==0:
+                indexs = np.where((onset<=t_stim))[0][0]
+            else:
+                indexs = indexs[0]
         feature_tensor[indexs,all_labels==onehot] = 1
     return feature_tensor
 def reverse_onehot_features(feature_tensor, all_labels, sr=100):
@@ -396,8 +400,8 @@ def pca_from_svd(F, std_feats, demean_feats, n_components):
 
     #reconstruct F
     F_recon = U*s
-
-    return F_recon
+    weight = Vt[:n_components,:].T
+    return F_recon, weight, mF, normF
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 from general_analysis_code.regress_from_2way_crossval import regress_from_2way_crossval_himalaya
-from sam_code.regress_predictions_from_3way_crossval import regress_predictions_from_3way_crossval
+
 import numpy as np
 
 def correlate_columns(x, y):
@@ -12,7 +12,7 @@ def correlate_columns(x, y):
     # bound the values to -1 to 1 in the event of precision issues
     return np.maximum(np.minimum(result, np.array(1.0)), np.array(-1.0)).diagonal()
 
-def regress_from_3way_crossval_himalaya(X, Y, groups,alphas= np.logspace(-100, 100, 201,base=2), save_parameters=False,half=False,return_best_alphas=False):
+def regress_from_3way_crossval(X, Y, groups,alphas= np.logspace(-100, 100, 201,base=2), save_parameters=False,backend='torch',half=False,return_best_alphas=False):
 
     all_folds = np.unique(groups)
     Y_hat = np.zeros_like(Y)
@@ -27,7 +27,7 @@ def regress_from_3way_crossval_himalaya(X, Y, groups,alphas= np.logspace(-100, 1
         F_train = X[train_indices]
         Y_train = Y[train_indices]
         train_fold_indices = groups[train_indices]
-        model,best_alphas = regress_from_2way_crossval_himalaya(F_train, Y_train, train_fold_indices,alphas=alphas,refit=True,autocast=half)
+        model,best_alphas = regress_from_2way_crossval_himalaya(F_train, Y_train, train_fold_indices,alphas=alphas,backend=backend,half=half)
         F_test = X[test_indices]
         
         # apply the weights to the test features
@@ -57,6 +57,8 @@ def regress_from_3way_crossval_himalaya(X, Y, groups,alphas= np.logspace(-100, 1
             return Y_hat, r
 
 def regress_from_3way_crossval_sam(X, y, groups,alphas= np.logspace(-100, 100, 201,base=2), save_parameters=False):
+    #deprecated
+    from sam_code.regress_predictions_from_3way_crossval import regress_predictions_from_3way_crossval
     n_ycolumn = y.shape[1]
     n_folds = len(np.unique(groups))
 
@@ -88,7 +90,8 @@ def regress_from_3way_crossval_sam(X, y, groups,alphas= np.logspace(-100, 100, 2
     else:
         return y_hat,cv_score
 
-def regress_from_3way_crossval(X, Y, groups,alphas= np.logspace(-100, 100, 201,base=2), save_parameters=True,backend='himalaya',half=False,return_best_alphas=False):
+def regress_from_3way_crossval_deprecated(X, Y, groups,alphas= np.logspace(-100, 100, 201,base=2), save_parameters=True,backend='himalaya',half=False,return_best_alphas=False):
+    #deprecated
     if backend == 'himalaya':
         return regress_from_3way_crossval_himalaya(X, Y, groups,alphas=alphas, save_parameters=save_parameters,half=half,return_best_alphas=return_best_alphas)
     elif backend == 'sam':
@@ -111,7 +114,7 @@ if __name__ == "__main__":
 
     groups = np.array([1]*200+[2]*200+[3]*200+[4]*200+[5]*200)
 
-    Y_hat, r, models = regress_from_3way_crossval(X, y, groups, save_models=True)
+    Y_hat, r, models = regress_from_3way_crossval(X, y, groups)
     
     coefs = np.array([model.coef_ for model in models]) # n_folds x n_features x n_ycolumn
     intercepts = np.array([model.intercept_ for model in models]) # n_folds x n_ycolumn
