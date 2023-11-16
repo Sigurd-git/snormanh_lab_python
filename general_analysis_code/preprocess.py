@@ -1,11 +1,8 @@
 import numpy as np
-import scipy
 import re
 from scipy.interpolate import interp1d
 from scipy import signal
 from scipy.linalg import svd
-import sys
-from einops import rearrange
 def lag(X,lag_num,format):
     '''
     X: np array 
@@ -232,16 +229,12 @@ def align_time(array,t_origin,t_new,format,interpolate=True):
 
     array_resample,t_resample = signal.resample(array, sample_num,t_origin,axis=time_dim)
     
-
+    t_resample = np.round(t_resample,decimals=8)
+    t_new = np.round(t_new,decimals=8)
     #pad the array_resample and t_resample to cover the whole range of t_new
-    #find the first index of t_new that is larger than t_resample[0]
-    first_index = np.where(t_new>=t_resample[0])[0][0]
-    #find the last index of t_new that is smaller than t_resample[-1]
-    last_index = np.where(t_new<=t_resample[-1])[0][-1]
-
     #pad the array_resample and t_resample
-    num_pad_before = first_index
-    num_pad_after = len(t_new) - last_index - 1
+    num_pad_before = np.ceil(np.round((t_resample[0]-t_new[0])*f_new,decimals=8)).astype(np.int8)
+    num_pad_after = np.ceil(np.round((t_new[-1]-t_resample[-1])*f_new,decimals=8)).astype(np.int8)
     if num_pad_before>0:
         pad_matrix_shape = list(array_resample.shape)
         pad_matrix_shape[time_dim] = num_pad_before
@@ -256,11 +249,11 @@ def align_time(array,t_origin,t_new,format,interpolate=True):
         pad_matrix = np.zeros(pad_matrix_shape)
         if num_pad_before>0:
             array_pad = np.concatenate((array_pad,pad_matrix),axis=time_dim)
-            t_pad = np.concatenate((t_pad,np.linspace(t_pad[-1],t_new[-1],num_pad_after)),axis=0)
+            t_pad = np.concatenate((t_pad,np.linspace(t_resample[-1],t_new[-1]+1/f_new,num_pad_after+1,endpoint=False)[1:]),axis=0)
 
         else:
             array_pad = np.concatenate((array_resample,pad_matrix),axis=time_dim)
-            t_pad = np.concatenate((t_resample,np.linspace(t_resample[-1],t_new[-1],num_pad_after)),axis=0)
+            t_pad = np.concatenate((t_resample,np.linspace(t_resample[-1],t_new[-1]+1/f_new,num_pad_after+1,endpoint=False)[1:]),axis=0)
         print(f'pad {num_pad_after} after the array')
 
     if num_pad_before<=0 and num_pad_after<=0:
