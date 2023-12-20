@@ -9,7 +9,7 @@ def lag(X,lag_num,format):
     lag_num: number of lags
     format: name of dimensions, like 'b c t f ' or 't f'
     this function is used to add lags at t dimension and merge with the f dimension
-    its workflow is like this: 'b c t f -> b c t f lag -> b c t f*lag'
+    its workflow is like this: 'b c t f -> b c t f lag'
 
     Example:
     X = np.arange(24).reshape(2,3,4)
@@ -29,7 +29,7 @@ def lag(X,lag_num,format):
     time_dim = format.index('t')
 
     #find the feature dimension
-    feature_dim = format.index('f')
+    # feature_dim = format.index('f')
 
     X_lags = []
 
@@ -65,7 +65,7 @@ def lag(X,lag_num,format):
             X_lag = np.delete(X_lag, np.s_[:i], axis=time_dim)
 
             X_lags.append(X_lag)
-    X_lags = np.concatenate(X_lags,axis=feature_dim)
+    X_lags = np.stack(X_lags,axis=-1)
 
 
     return X_lags

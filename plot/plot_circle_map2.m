@@ -41,6 +41,8 @@ end
 if ischar(I.cmap)
     I.cmap = cmap_from_name(I.cmap);
 end
+% I.cmap=cbrewer('seq','OrRd', 256);
+
 assert(ismatrix(I.cmap));
 
 % create the map
@@ -58,8 +60,8 @@ end
 if I.plot
     plot_fsaverage_1D_overlay_v2(map, hemi, 'colormap', I.cmap, 'color_range', I.range, 'figh', I.figh);
     % save the figure and do not print text
-    evalc('export_fig(out_path, ''-png'', ''-r100'', ''-nocrop'');');
-    % export_fig(out_path, '-png','-r100','-nocrop');
+    % evalc('export_fig(out_path, ''-png'', ''-r100'', ''-nocrop'');');
+    export_fig(out_path, '-png','-r100','-nocrop');
     set(I.figh, 'PaperPosition', [4 4 5 5]);
     % saveas(I.figh, out_path, 'png');
 end

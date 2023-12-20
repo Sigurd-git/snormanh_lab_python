@@ -1,29 +1,54 @@
-name: py310
+name: encodingmodel_py39
 channels:
   - conda-forge
-  - defaults
 dependencies:
-  - python=3.10
-  - scikit-learn
+  - python=3.9
   - tqdm
-  - numpy
-  - pillow
-  - opencv
-  - pandas
-  - psutil
-  - pysoundfile
   - matplotlib
   - seaborn
-  - jupyterlab
+  - pandas
+  - scikit-learn
+  - numpy
+  - hdf5storage
   - dill
+  - textgrid
+  - tiktoken==0.3.3
+  - more-itertools
+  - numba
+  - cupy
+  - pytest
+  - pytest-rerunfailures
+  - scipy
+  - openai
+  - dask
+  - pysoundfile
+  - gensim
+  - omegaconf
+  - flask
+  - hydra-core
+  - jupyterlab
+  - librosa
+  - optuna
+  - python-levenshtein
+  - pytorch-lightning>=1.7.0
+  - sox
+  - psutil
+  - mpld3
   - cox
   - einops
-  - h5py
-  - pip
   - montreal-forced-aligner
-
+  - cvxopt
+  - pip
   - pip:
-    - textgrid
-    - mat73
-    - git+https://github.com/jenellefeather/chcochleagram.git
+    - torch
+    - torchvision
+    - torchaudio
+    - torchelastic
+    - jupyter-matlab-proxy
+    - mlens
+    - /scratch/snormanh_lab/shared/code/my_himalaya
+    - /scratch/snormanh_lab/shared/code/my_whisper
+    - /scratch/snormanh_lab/shared/code/snormanh_lab_python
+    - git+https://github.com/romesco/hydra-lightning/#subdirectory=hydra-configs-pytorch-lightning
+    - git+https://github.com/SeanNaren/deepspeech.pytorch.git
 
