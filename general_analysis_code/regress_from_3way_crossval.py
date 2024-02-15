@@ -32,6 +32,7 @@ def regress_from_3way_crossval(
     r = np.zeros((len(all_folds), n_data_vecs))
     coefs = []
     intercepts = []
+    train_cv_scores = []
     for index, test_fold in enumerate(all_folds):
         # train and testing folds
         test_indices = groups == test_fold
@@ -61,15 +62,20 @@ def regress_from_3way_crossval(
 
         coef = np.array(model.coef_.cpu())  # n_features x n_ycolumn
         intercept = np.array(model.intercept_.cpu())  # n_ycolumn
-
+        cv_score = np.array(
+            model.cv_scores_.cpu()
+        )  # n_trainfolds x n_alphas x subject/electrode/rep
         coefs.append(coef)
         intercepts.append(intercept)
+        train_cv_scores.append(cv_score)
 
     coefs = np.array(coefs)  # n_folds x n_features x n_ycolumn
     intercepts = np.array(intercepts)  # n_folds x n_ycolumn
+    train_cv_scores = np.array(
+        train_cv_scores
+    )  # n_folds x n_trainfolds x n_alphas x subject/electrode/rep
 
-    return Y_hat, r, coefs, intercepts, best_alphas
-
+    return Y_hat, r, coefs, intercepts, best_alphas, train_cv_scores
 
 
 if __name__ == "__main__":

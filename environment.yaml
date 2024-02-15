@@ -38,6 +38,7 @@ dependencies:
   - einops
   - montreal-forced-aligner
   - cvxopt
+
   - pip
   - pip:
     - torch
@@ -46,6 +47,10 @@ dependencies:
     - torchelastic
     - jupyter-matlab-proxy
     - mlens
+    - hydra-core
+    - dfply
+    - transformers
+    - datasets
     - /scratch/snormanh_lab/shared/code/my_himalaya
     - /scratch/snormanh_lab/shared/code/my_whisper
     - /scratch/snormanh_lab/shared/code/snormanh_lab_python

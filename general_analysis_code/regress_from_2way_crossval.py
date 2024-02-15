@@ -24,7 +24,7 @@ def regress_from_2way_crossval_himalaya(
     half=True,
     n_alphas_batch=10,
     n_targets_batch=None,
-    fit_intercept=True
+    fit_intercept=True,
 ):
     cv = wrapper_cv(X, Y, groups)
     set_backend(backend)
@@ -43,6 +43,7 @@ def regress_from_2way_crossval_himalaya(
     )
     model.fit(X, Y)
     best_alphas = model.best_alphas_
+    
     return model, best_alphas
 
 
