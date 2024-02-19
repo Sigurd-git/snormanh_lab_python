@@ -4,6 +4,7 @@ from scipy.interpolate import interp1d
 from scipy import signal
 from scipy.linalg import svd
 from math import gcd
+from fractions import Fraction
 
 
 def lag(X, lag_num, format):
@@ -217,14 +218,17 @@ def align_time(array, t_origin, t_new, format, interpolate=True, resample=True):
 
     if resample:
         # The number of samples in the resampled signal.
-        origin_number = len(t_origin)
-        new_number = np.round(origin_number / f_0 * f_new).astype(int)
-
-        gcd_value = gcd(origin_number, new_number)
-        up = new_number // gcd_value
-        down = origin_number // gcd_value
+        # 使用Fraction找到最接近的分数表示
+        resample_ratio = (
+            Fraction(f_new).limit_denominator() / Fraction(f_0).limit_denominator()
+        )
+        up = resample_ratio.numerator
+        down = resample_ratio.denominator
         array_resample = signal.resample_poly(array, up, down, axis=time_dim)
-        t_resample = np.arange(new_number) / f_new + t_origin[0]
+        t_resample = np.arange(array_resample.shape[time_dim]) / f_new + t_origin[0]
+        assert (
+            array.shape[0] >= ((t_new[-1] - t_origin[0]) * f_new + 1) * down / up
+        ), "The timing of resampled array should cover t_new"
     else:
         array_resample = array
         t_resample = t_origin
