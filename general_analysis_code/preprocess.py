@@ -218,17 +218,19 @@ def align_time(array, t_origin, t_new, format, interpolate=True, resample=True):
 
     if resample:
         # The number of samples in the resampled signal.
-        # 使用Fraction找到最接近的分数表示
+        # Use Fraction to find the closest fraction representation
         resample_ratio = (
             Fraction(f_new).limit_denominator() / Fraction(f_0).limit_denominator()
         )
         up = resample_ratio.numerator
         down = resample_ratio.denominator
+        n_t_needed = ((t_new[-1] - t_origin[0]) * f_new + 1) * down / up
+        assert (
+            array.shape[0] >= n_t_needed
+        ), f"The timing of resampled array should cover t_new, but the original array has {array.shape[0]} samples, and the interpolation needs {n_t_needed} original samples. Please check the time dimension of the array."
         array_resample = signal.resample_poly(array, up, down, axis=time_dim)
         t_resample = np.arange(array_resample.shape[time_dim]) / f_new + t_origin[0]
-        assert (
-            array.shape[0] >= ((t_new[-1] - t_origin[0]) * f_new + 1) * down / up
-        ), "The timing of resampled array should cover t_new"
+
     else:
         array_resample = array
         t_resample = t_origin
