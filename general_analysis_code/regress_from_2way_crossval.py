@@ -3,9 +3,8 @@ from himalaya.backend import set_backend
 from himalaya.ridge import Ridge, RidgeCV
 from sklearn.model_selection import GroupKFold
 from sklearn.datasets import make_regression
+
 alphas = np.logspace(-100, 99, 200, base=2)
-
-
 
 
 def wrapper_cv(X, y, groups):
@@ -28,6 +27,9 @@ def regress_from_2way_crossval_himalaya(
 ):
     cv = wrapper_cv(X, Y, groups)
     set_backend(backend)
+    if backend == "torch_mps":
+        print("Since you are using torch_mps backend, only float32 are supported.")
+        half = True
     if half:
         X = X.astype(np.float32)
         Y = Y.astype(np.float32)
@@ -43,13 +45,11 @@ def regress_from_2way_crossval_himalaya(
     )
     model.fit(X, Y)
     best_alphas = model.best_alphas_
-    
+
     return model, best_alphas
 
 
-
 if __name__ == "__main__":
-
     n_samples, n_features, n_targets = 1000, 10, 10
     # n_samples, n_features, n_targets = 90000, 2000, 150
     X, Y = make_regression(
@@ -61,8 +61,6 @@ if __name__ == "__main__":
         bias=3.0,
     )
     groups = np.random.randint(0, 3, n_samples)
-
-
 
     X = X.astype(np.float32)
     Y = Y.astype(np.float32)
@@ -79,7 +77,6 @@ if __name__ == "__main__":
 
     rs_1 = [np.corrcoef(Y_hat_h[:, i], Y[:, i])[0, 1] for i in range(Y.shape[1])]
 
-    
     refit_model, best_K_h = regress_from_2way_crossval_himalaya(
         X,
         Y,
@@ -93,7 +90,7 @@ if __name__ == "__main__":
     # #pickle an generater
     # with open('model.pkl', 'wb') as f:
     #     dill.dump(model, f)
-    
+
     # #load the pickle
     # with open('model.pkl', 'rb') as f:
     #     model = dill.load(f)

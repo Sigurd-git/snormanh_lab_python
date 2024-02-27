@@ -25,6 +25,7 @@ def regress_from_3way_crossval(
     half=False,
     n_alphas_batch=10,
     n_targets_batch=None,
+    train_groups=None,
 ):
     all_folds = np.unique(groups)
     Y_hat = np.zeros_like(Y)
@@ -39,7 +40,12 @@ def regress_from_3way_crossval(
         train_indices = np.logical_not(test_indices)
         F_train = X[train_indices]
         Y_train = Y[train_indices]
-        train_fold_indices = groups[train_indices]
+        if train_groups is None:
+            train_fold_indices = groups[train_indices]
+        else:
+            assert len(train_groups) == len(all_folds)
+            train_fold_indices = train_groups[index]
+            assert len(train_fold_indices) == len(F_train)
         model, best_alphas = regress_from_2way_crossval_himalaya(
             F_train,
             Y_train,
@@ -81,22 +87,37 @@ def regress_from_3way_crossval(
 if __name__ == "__main__":
     from sklearn.datasets import make_regression
 
+    n_samples = 1000
+    n_features = 100
     # make some data using sklearn's make_regression function-- very handy!
     X, y = make_regression(
-        n_samples=1000,
-        n_features=100,
+        n_samples=n_samples,
+        n_features=n_features,
         noise=10,
         random_state=0,
         effective_rank=20,
         n_targets=2,
     )
+    n_folds = 5
+    groups = np.random.randint(0, n_folds, n_samples)
+    train_groups = []
+    unique_groups = np.unique(groups)
+    for i in range(5):
+        test_group_i = unique_groups[i]
+        n_train_samples = groups[groups != test_group_i].shape[0]
+        # create random train groups
+        train_groups_i = np.random.randint(0, n_folds, n_train_samples)
+        train_groups.append(train_groups_i)
+    train_groups = np.array(train_groups, dtype=object)
+    (
+        Y_hat,
+        r,
+        coefs,
+        intercepts,
+        best_alphas,
+        train_cv_scores,
+    ) = regress_from_3way_crossval(
+        X, y, groups, backend="torch_mps", train_groups=train_groups
+    )
 
-    groups = np.array([1] * 200 + [2] * 200 + [3] * 200 + [4] * 200 + [5] * 200)
-
-    Y_hat, r, models = regress_from_3way_crossval(X, y, groups)
-
-    coefs = np.array(
-        [model.coef_ for model in models]
-    )  # n_folds x n_features x n_ycolumn
-    intercepts = np.array([model.intercept_ for model in models])  # n_folds x n_ycolumn
-    pass
+    print(r)
