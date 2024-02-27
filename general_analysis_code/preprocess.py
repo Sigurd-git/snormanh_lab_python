@@ -304,11 +304,11 @@ def align_time(array, t_origin, t_new, format, interpolate=True, resample=True):
 
 
 def generate_onehot_features(
-    all_labels,
     onehot_label,
     onehot_onset,
     onehot_offset,
-    time_length,
+    time_length=None,
+    all_labels=None,
     onset_feature=False,
     sr=100,
 ):
@@ -328,11 +328,16 @@ def generate_onehot_features(
     feature_tensor (numpy.array): A 2D array with time_length rows and len(all_labels) columns, filled with one-hot encoded features.
     """
     # make sure all_labels, onehot_label, onehot_onset, onehot_offset are all numpy arrays
-    all_labels = np.array(all_labels)
+
     onehot_label = np.array(onehot_label)
     onehot_onset = np.array(onehot_onset)
     onehot_offset = np.array(onehot_offset)
-
+    if all_labels is not None:
+        all_labels = np.array(all_labels)
+    else:
+        all_labels = np.unique(onehot_label)
+    if time_length is None:
+        time_length = (np.floor(np.max(onehot_offset) * sr)).astype(int)
     feature_tensor = np.full((time_length, len(all_labels)), 0, dtype=np.int8)
 
     for onehot_index in range(len(onehot_label)):
