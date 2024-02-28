@@ -44,7 +44,7 @@ def regress_from_3way_crossval(
             train_fold_indices = groups[train_indices]
         else:
             assert len(train_groups) == len(all_folds)
-            train_fold_indices = train_groups[index]
+            train_fold_indices = train_groups[test_fold]
             assert len(train_fold_indices) == len(F_train)
         model, best_alphas = regress_from_2way_crossval_himalaya(
             F_train,
