@@ -42,6 +42,7 @@ def regress_from_2way_crossval_himalaya(
             "n_alphas_batch": n_alphas_batch,
             "n_targets_batch": n_targets_batch,
         },
+        Y_in_cpu=True,
     )
     model.fit(X, Y)
     best_alphas = model.best_alphas_
