@@ -3,6 +3,7 @@ from himalaya.backend import set_backend
 from himalaya.ridge import Ridge, RidgeCV
 from sklearn.model_selection import GroupKFold
 from sklearn.datasets import make_regression
+import torch
 
 alphas = np.logspace(-100, 99, 200, base=2)
 
@@ -31,8 +32,11 @@ def regress_from_2way_crossval_himalaya(
         print("Since you are using torch_mps backend, only float32 are supported.")
         half = True
     if half:
-        X = X.astype(np.float32)
-        Y = Y.astype(np.float32)
+        X = torch.as_tensor(X, dtype=torch.float32)
+        Y = torch.as_tensor(Y, dtype=torch.float32)
+    else:
+        X = torch.as_tensor(X, dtype=torch.float64)
+        Y = torch.as_tensor(Y, dtype=torch.float64)
     model = RidgeCV(
         alphas=alphas,
         cv=cv,

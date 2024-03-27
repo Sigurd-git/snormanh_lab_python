@@ -3,8 +3,8 @@ import re
 from scipy.interpolate import interp1d
 from scipy import signal
 from scipy.linalg import svd
-from math import gcd
 from fractions import Fraction
+import torch
 
 
 def lag(X, lag_num, format):
@@ -76,7 +76,7 @@ def match_lag(X, lag_seqs, format):
     lag_seqs: a list or vector of lag numbers
     format: name of dimensions, like 'b c t f ' or 't f'
     this function is used to add lags at t dimension and merge with the f dimension
-    its workflow is like this: 'b c t f -> b c t f lag -> b c t f*lag'
+    its workflow is like this: 'b c t f -> b c t f lag'
 
     Example:
     X = np.arange(24).reshape(2,3,4)
@@ -84,7 +84,7 @@ def match_lag(X, lag_seqs, format):
     X_lag = match_lag(X,(0,1,2,4),'b t f')
     print(X_lag)
     """
-
+    X = torch.as_tensor(X)
     # remove spaces at the beginning and end
     format = format.strip()
     # analyse format, splited by any number of spaces
@@ -104,24 +104,37 @@ def match_lag(X, lag_seqs, format):
                 # generate pad matrix
                 pad_matrix_shape = list(X.shape)
                 pad_matrix_shape[time_dim] = i
-                pad_matrix = np.zeros(pad_matrix_shape)
-                X_lag = np.concatenate((pad_matrix, X), axis=time_dim)
+                pad_matrix = torch.zeros(pad_matrix_shape)
+                X_lag = torch.concatenate((pad_matrix, X), dim=time_dim)
 
                 # remove the last lag_num samples
-                X_lag = np.delete(X_lag, np.s_[-i:], axis=time_dim)
+                # X_lag = torch.delete(X_lag, torch.s_[-i:], dim=time_dim)
+
+                # remove the last lag_num samples
+                indices = tuple(
+                    slice(None) if dim != time_dim else slice(None, -i or None)
+                    for dim in range(X_lag.dim())
+                )
+
+                X_lag = X_lag[indices]
             else:
                 i = -i
                 # generate pad matrix
                 pad_matrix_shape = list(X.shape)
                 pad_matrix_shape[time_dim] = i
-                pad_matrix = np.zeros(pad_matrix_shape)
-                X_lag = np.concatenate((X, pad_matrix), axis=time_dim)
+                pad_matrix = torch.zeros(pad_matrix_shape)
+                X_lag = torch.concatenate((X, pad_matrix), dim=time_dim)
 
                 # remove the first lag_num samples
-                X_lag = np.delete(X_lag, np.s_[:i], axis=time_dim)
+                indices = tuple(
+                    slice(None) if dim != time_dim else slice(i, None)
+                    for dim in range(X_lag.dim())
+                )
+
+                X_lag = X_lag[indices]
         X_lags.append(X_lag)
 
-    X_lags = np.stack(X_lags, axis=-1)
+    X_lags = torch.stack(X_lags, dim=-1)
 
     return X_lags
 

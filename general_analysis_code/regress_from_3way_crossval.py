@@ -1,5 +1,5 @@
 import numpy as np
-
+import torch
 from general_analysis_code.regress_from_2way_crossval import (
     regress_from_2way_crossval_himalaya,
 )
@@ -7,37 +7,43 @@ from general_analysis_code.regress_from_2way_crossval import (
 
 def correlate_columns(x, y):
     # Correlate each column of x with the corresponding column of y
-    xv = x - x.mean(axis=0)
-    yv = y - y.mean(axis=0)
-    xvss = (xv * xv).sum(axis=0)
-    yvss = (yv * yv).sum(axis=0)
-    result = np.matmul(xv.T, yv) / np.sqrt(np.outer(xvss, yvss))
+    xv = x - torch.mean(x, dim=0)
+    yv = y - torch.mean(y, dim=0)
+    xvss = torch.sum((xv * xv), dim=0)
+    yvss = torch.sum((yv * yv), dim=0)
+    result = torch.matmul(xv.T, yv) / torch.sqrt(torch.outer(xvss, yvss))
     # bound the values to -1 to 1 in the event of precision issues
-    return np.maximum(np.minimum(result, np.array(1.0)), np.array(-1.0)).diagonal()
+    return torch.maximum(
+        torch.minimum(result, torch.tensor(1.0)), torch.tensor(-1.0)
+    ).diagonal()
 
 
 def regress_from_3way_crossval(
     X,
     Y,
     groups,
-    alphas=np.logspace(-100, 99, 200, base=2),
+    alphas=torch.logspace(-100, 99, 200, base=2),
     backend="torch_cuda",
     half=False,
     n_alphas_batch=10,
     n_targets_batch=None,
     train_groups=None,
 ):
-    all_folds = np.unique(groups)
-    Y_hat = np.zeros_like(Y)
+    groups = torch.as_tensor(groups, dtype=torch.int64)
+    Y = torch.as_tensor(Y, dtype=torch.float32)
+    X = torch.as_tensor(X, dtype=torch.float32)
+    all_folds = torch.unique(groups)
+    Y_hat = torch.zeros_like(Y)
     n_data_vecs = Y.shape[1]
-    r = np.zeros((len(all_folds), n_data_vecs))
+    r = torch.zeros((len(all_folds), n_data_vecs))
     coefs = []
     intercepts = []
     train_cv_scores = []
     for index, test_fold in enumerate(all_folds):
+        test_fold = int(test_fold)
         # train and testing folds
         test_indices = groups == test_fold
-        train_indices = np.logical_not(test_indices)
+        train_indices = torch.logical_not(test_indices)
         F_train = X[train_indices]
         Y_train = Y[train_indices]
         if train_groups is None:
@@ -66,20 +72,19 @@ def regress_from_3way_crossval(
         r_fold = correlate_columns(Y_hat_fold, Y[test_indices])
         r[index] = r_fold
 
-        coef = np.array(model.coef_.cpu())  # n_features x n_ycolumn
-        intercept = np.array(model.intercept_.cpu())  # n_ycolumn
-        cv_score = np.array(
+        coef = model.coef_.cpu()  # n_features x n_ycolumn
+        intercept = model.intercept_.cpu()  # n_ycolumn
+        cv_score = (
             model.cv_scores_.cpu()
         )  # n_trainfolds x n_alphas x subject/electrode/rep
         coefs.append(coef)
         intercepts.append(intercept)
         train_cv_scores.append(cv_score)
 
-    coefs = np.array(coefs)  # n_folds x n_features x n_ycolumn
-    intercepts = np.array(intercepts)  # n_folds x n_ycolumn
-    train_cv_scores = np.array(
-        train_cv_scores
-    )  # n_folds x n_trainfolds x n_alphas x subject/electrode/rep
+    coefs = torch.stack(coefs)  # n_folds x n_features x n_ycolumn
+    intercepts = torch.stack(intercepts)  # n_folds x n_ycolumn
+    train_cv_scores = torch.stack(train_cv_scores)
+    # n_folds x n_trainfolds x n_alphas x subject/electrode/rep
 
     return Y_hat, r, coefs, intercepts, best_alphas, train_cv_scores
 
