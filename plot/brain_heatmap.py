@@ -1,15 +1,21 @@
-
 import os
 import numpy as np
 import matlab
+from typing import Any, List
 
 # Get the directory of this file
 file_path = os.path.abspath(__file__)
 dir_path = os.path.dirname(file_path)
 
-from typing import Any, List
 
-def brain_heatmap(eng: Any,  subject: str, correlation: np.array, hemi: str, output_path: str , range: List[float] =[-0.15,0.15] ) -> dict:
+def brain_heatmap(
+    eng: Any,
+    subject: str,
+    correlation: np.array,
+    hemi: str,
+    output_path: str,
+    range: List[float] = [-0.15, 0.15],
+) -> dict:
     """
     This function generates a brain heatmap using the provided parameters.
 
@@ -25,5 +31,12 @@ def brain_heatmap(eng: Any,  subject: str, correlation: np.array, hemi: str, out
     result (dict): The result of the eng function execution. This is typically an object containing information about the generated heatmap.
     """
     eng.addpath(dir_path)
-    result = eng.plot_circle_map2(subject, matlab.double(correlation.reshape(-1,1)), hemi, output_path, 'range',matlab.double(range))
+    result = eng.plot_circle_map2(
+        subject,
+        matlab.double(correlation.reshape(-1, 1)),
+        hemi,
+        output_path,
+        "range",
+        matlab.double(range),
+    )
     return result
